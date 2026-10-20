@@ -86,7 +86,15 @@ export function DayPage() {
         <div>
           <h1 className="day__date">{detail?.day ?? list[0].day}</h1>
           <div className="day__note">
-            群聊日报{detail ? ` · 提炼 ${detail.item_count} 条` : ''}
+            {/* 副标题用**服务端给的概述**，不自己拼一句静态文案。
+                那个概述里带着「模型这次没跑成，下面全是机械行」这类状态 ——
+                而它是这一页**唯一**会说这件事的地方：正文里那段被 `parse()`
+                当成概述跳过了（理由是「页头已经给过」）。
+                自己拼一句「提炼 N 条」的话，那句话就没人说了，
+                而页面上看起来一切正常。 */}
+            {detail
+              ? detail.preview || `群聊日报 · 提炼 ${detail.item_count} 条`
+              : '群聊日报'}
           </div>
         </div>
         <div className="day__week">
