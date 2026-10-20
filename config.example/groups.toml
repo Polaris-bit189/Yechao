@@ -1,0 +1,23 @@
+[[group]]
+id = 910000001
+name = "示例·年级通知群"
+tier = "high"
+enabled = true
+
+[[group]]
+id = 910000003
+name = "示例·社团活动群"
+tier = "normal"
+enabled = true
+
+[[group]]
+id = 910000002
+name = "示例·班级群"
+tier = "normal"
+enabled = true
+
+[[group]]
+id = 910000004
+name = "示例·二手交易群"
+tier = "low"
+enabled = true

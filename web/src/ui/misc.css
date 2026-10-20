@@ -1,0 +1,203 @@
+/* 提醒条、帮助卡、页面头、共用小件。 */
+
+/* ── 提醒条 ────────────────────────────────────────────────── */
+
+/* ⚠️ 用 `position: fixed` + 内容区留出上边距，而不是把它们塞进同一个
+ * 文档流 —— 塞进去的话，它的高度一变（比如换行），下面所有内容都要重排，
+ * 而它是一块「今天要不要看」的一次性提示，不该有这个权重。
+ *
+ * 上一版用的是「负外边距顶到顶部」，结果它盖住了页面大标题。
+ * 那不是尺寸问题，是**层级关系没想清**：它是通知，不是内容。 */
+.remind {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: var(--rail);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  height: 36px;
+  padding: 0 var(--s5);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-2) 92%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--fg-3);
+  font-size: 12.5px;
+}
+
+.remind svg {
+  flex-shrink: 0;
+}
+
+.remind__btns {
+  display: flex;
+  gap: var(--s2);
+}
+
+.remind__yes {
+  padding: 1px var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r1);
+  color: var(--fg-2);
+  font-size: 12px;
+}
+
+.remind__yes:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.remind__no {
+  color: var(--fg-3);
+  font-size: 12px;
+}
+
+.remind__no:hover {
+  color: var(--fg-2);
+}
+
+/* ── 帮助卡 ────────────────────────────────────────────────── */
+
+.helpwrap {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: var(--s4);
+  background: var(--scrim);
+}
+
+.helpcard {
+  max-width: 420px;
+  padding: var(--s5);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r3);
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.helpcard h2 {
+  margin-bottom: var(--s3);
+  font-size: 17px;
+}
+
+.helpcard p {
+  margin-bottom: var(--s4);
+  color: var(--fg-2);
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+
+.helpcard dl {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: var(--s2) var(--s3);
+  margin-bottom: var(--s5);
+  font-size: 13px;
+}
+
+.helpcard dt {
+  color: var(--fg-3);
+}
+
+.helpcard dd {
+  margin: 0;
+  color: var(--fg-2);
+}
+
+.helpcard button {
+  width: 100%;
+  padding: var(--s2);
+  border-radius: var(--r1);
+  background: var(--accent-weak);
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.helpcard button:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ── 页面头 ────────────────────────────────────────────────── */
+
+.phead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-bottom: var(--s5);
+}
+
+.phead__title {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* 标题下的小字标识固定了每页的视觉锚点，切页面时位置不跳。 */
+.phead__tag {
+  margin-top: 2px;
+  color: var(--fg-3);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.phead__side {
+  flex-shrink: 0;
+  padding-bottom: 3px;
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+}
+
+/* ── 共用 ──────────────────────────────────────────────────── */
+
+.quiet {
+  padding: var(--s4) 0;
+  color: var(--fg-3);
+  font-size: 13.5px;
+}
+
+.fail {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--danger);
+  border-radius: var(--r2);
+  background: var(--danger-weak);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.fail button {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.seclabel {
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--line);
+  color: var(--fg-3);
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 767px) {
+  .remind {
+    position: static;
+    height: auto;
+    flex-wrap: wrap;
+    gap: var(--s1) var(--s2);
+    padding: var(--s2) var(--s3);
+  }
+
+  .phead__title {
+    font-size: 20px;
+  }
+}

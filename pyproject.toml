@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yechao"
+version = "0.1.0"
+description = "夜抄 —— 把散在多个群里的通知、报名、活动、失物招领整理成按天可读的日报"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+yechao = "yechao.interfaces.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["yechao*"]
+
+[tool.setuptools.package-data]
+yechao = ["web/dist/**/*", "web/dist/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# ⚠️ 不设 `addopts = -q`：默认输出里那句 "N passed" 是空转自检要读的东西，
+# 而 `-q` 会把每层跑了几个用例压掉。护栏的报告必须看得见。
+filterwarnings = ["error::DeprecationWarning:yechao.*"]

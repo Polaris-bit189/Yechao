@@ -1,0 +1,295 @@
+/* 日历。 */
+
+/* ── 撞车 ──────────────────────────────────────────────────── */
+
+.clash {
+  margin-bottom: var(--s3);
+  padding: var(--s3) var(--s4);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  border-radius: var(--r2);
+  background: var(--danger-weak);
+}
+
+.clash__top {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.clash__toggle {
+  margin-left: auto;
+  color: var(--danger);
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.clash__toggle:hover {
+  opacity: 1;
+}
+
+.clash__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 5px;
+  color: color-mix(in srgb, var(--danger) 78%, var(--fg-2));
+  font-size: 12.5px;
+}
+
+.clash__mid {
+  margin: 0 5px;
+  opacity: 0.6;
+}
+
+.clash__more {
+  opacity: 0.75;
+}
+
+/* ── 课表 ──────────────────────────────────────────────────── */
+
+.course {
+  display: flex;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r2);
+  font-size: 12.5px;
+}
+
+.course--ok {
+  color: var(--fg-3);
+}
+
+.course--warn {
+  border: 1px solid color-mix(in srgb, var(--warn) 36%, transparent);
+  background: var(--warn-weak);
+  color: var(--warn);
+}
+
+.course__sub {
+  margin-top: 2px;
+  opacity: 0.85;
+}
+
+.course__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 3px;
+}
+
+/* ── 月条 ──────────────────────────────────────────────────── */
+
+.monthbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s4);
+  margin-bottom: var(--s2);
+}
+
+.monthbar__nav {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r1);
+  color: var(--fg-3);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.monthbar__nav:hover {
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.monthbar__title {
+  min-width: 120px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 网格 ──────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  padding: 1px;
+  border-radius: var(--r2);
+  background: var(--line);
+}
+
+.grid__wd {
+  padding: var(--s1) 0;
+  background: var(--bg);
+  color: var(--fg-3);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.grid__cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  aspect-ratio: 1 / 0.74;
+  background: var(--bg);
+  color: var(--fg-2);
+  font-size: 13px;
+  transition: background var(--t-fast) var(--ease);
+}
+
+.grid__cell:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+/* 选中用内描边，不填满 —— 填满会盖住日期数字。 */
+.grid__cell.is-picked {
+  border-radius: 4px;
+  background: var(--accent-weak);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--fg);
+}
+
+/* 今天只改字色与字重，不描边 —— 描边留给选中，两种状态不能长得像。 */
+.grid__cell.is-today .grid__num {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* 已过期的日子整体压暗一点，但日期仍可读。 */
+.grid__cell.is-past:not(.is-picked) .grid__num {
+  opacity: 0.55;
+}
+
+.grid__num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 有到期项的小点。固定占位高度，数字不会因为有无圆点上下跳。 */
+.grid__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.8;
+}
+
+.grid__cell.is-past .grid__dot {
+  opacity: 0.3;
+}
+
+/* ── 当天到期 ──────────────────────────────────────────────── */
+
+.due {
+  margin-top: var(--s5);
+}
+
+.due__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.due__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+
+.due__bar {
+  align-self: center;
+  width: 2px;
+  height: 12px;
+  border-radius: 1px;
+}
+
+.due__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.due__note {
+  flex-shrink: 0;
+  color: var(--fg-3);
+  font-size: 11.5px;
+}
+
+.due__empty {
+  padding: var(--s2) 0;
+  color: var(--fg-3);
+  font-size: 13px;
+}
+
+.due__tail {
+  margin-top: var(--s2);
+  font-size: 12.5px;
+  opacity: 0.8;
+}
+
+/* ── 附近几天 ──────────────────────────────────────────────── */
+
+.near {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--s3);
+}
+
+.near__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.near__row:hover {
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.near__day {
+  flex-shrink: 0;
+  color: var(--fg-2);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.near__n {
+  flex-shrink: 0;
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+}
+
+.near__names {
+  flex: 1;
+  overflow: hidden;
+  color: var(--fg-2);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .grid__cell {
+    aspect-ratio: 1 / 0.86;
+    font-size: 12px;
+  }
+
+  .due__note {
+    display: none;
+  }
+}

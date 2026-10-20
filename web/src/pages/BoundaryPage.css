@@ -1,0 +1,131 @@
+/* 隐私边界：结论条 + 四块数字 + 边界说明。 */
+
+/* ── 结论 ──────────────────────────────────────────────────── */
+
+.verdict {
+  margin-bottom: var(--s3);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r2);
+  background: color-mix(in srgb, var(--surface) 66%, transparent);
+}
+
+.verdict__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ok);
+  font-size: 14px;
+}
+
+.verdict--bad {
+  border-color: var(--danger);
+  background: var(--danger-weak);
+}
+
+.verdict--bad .verdict__head {
+  color: var(--danger);
+}
+
+.verdict__text {
+  margin-top: 5px;
+  color: var(--fg-3);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+/* ── 数字 ──────────────────────────────────────────────────── */
+
+/* 两列。窄屏一列 —— 四块挤成两列在 375 宽上会把数字折行。 */
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2);
+}
+
+.stat {
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  background: color-mix(in srgb, var(--surface) 52%, transparent);
+}
+
+.stat__label {
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+}
+
+/* 数字是这页的主角：大字号、等宽，一眼能读到。 */
+.stat__value {
+  margin: 3px 0 2px;
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__note {
+  color: var(--fg-3);
+  font-size: 11.5px;
+}
+
+.stat--good .stat__value {
+  color: var(--ok);
+}
+
+.stat--bad .stat__value {
+  color: var(--danger);
+}
+
+/* 「未检查」用中性色。绿色等于替读者下了一个「没问题」的结论。 */
+.stat--idle .stat__value {
+  color: var(--fg-3);
+  font-size: 19px;
+}
+
+/* ── 说明 ──────────────────────────────────────────────────── */
+
+.bound__scope {
+  max-width: var(--prose);
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+  color: var(--fg-3);
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+
+.bound__none {
+  padding: var(--s5) 0;
+  color: var(--fg-3);
+  font-size: 14px;
+}
+
+.bound__hint {
+  margin-top: var(--s2);
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.leaks {
+  margin-top: var(--s5);
+}
+
+.leaks ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--danger);
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+@media (max-width: 767px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .stat__value {
+    font-size: 22px;
+  }
+}

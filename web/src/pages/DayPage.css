@@ -1,0 +1,299 @@
+/* 日报。 */
+
+.day {
+  animation: pageIn var(--t-mid) var(--ease);
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── 页头 ──────────────────────────────────────────────────── */
+
+.day__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-bottom: var(--s4);
+}
+
+.day__date {
+  font-size: var(--fs-date);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.day__note {
+  margin-top: 3px;
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+}
+
+.day__week {
+  padding-bottom: 4px;
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+}
+
+/* ── 正文卡片 ──────────────────────────────────────────────── */
+
+/* 无阴影。层次靠表面色的细微差异 + 1px 发丝边 —— 卡片投影会让一页
+ * 早上的简报看起来像面板墙。 */
+.paper {
+  padding: var(--s5) var(--s5) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+}
+
+/* 概述句：比正文大一号，与第一小节之间留出明显空白。
+ * 它是导语，不是正文的第一段。 */
+.paper__p:first-child {
+  margin-bottom: var(--s5);
+  color: var(--fg-2);
+  font-size: 14.5px;
+  line-height: 1.8;
+  max-width: var(--prose);
+}
+
+.paper__h2 {
+  margin: var(--s5) 0 var(--s2);
+  color: var(--fg);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+}
+
+.paper__h2:first-child {
+  margin-top: 0;
+}
+
+.paper__h3 {
+  margin: var(--s3) 0 var(--s1);
+  color: var(--fg-2);
+  font-size: 13px;
+}
+
+.paper__ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.paper__ul li {
+  position: relative;
+  max-width: var(--prose);
+  padding-left: 14px;
+  font-size: var(--fs-body);
+  line-height: 1.8;
+}
+
+/* 行首方点。在密集列表里比圆点安静。 */
+.paper__ul li::before {
+  content: '';
+  position: absolute;
+  top: 0.8em;
+  left: 3px;
+  width: 3px;
+  height: 3px;
+  background: var(--fg-3);
+}
+
+.paper__p {
+  max-width: var(--prose);
+  margin: var(--s2) 0;
+  color: var(--fg-2);
+  font-size: var(--fs-body);
+}
+
+.paper__quote {
+  max-width: var(--prose);
+  margin: var(--s3) 0;
+  padding: var(--s2) var(--s3);
+  border-left: 2px solid var(--warn);
+  background: var(--warn-weak);
+  color: var(--fg-2);
+  font-size: 13px;
+}
+
+/* ── 引用 ──────────────────────────────────────────────────── */
+
+.cited {
+  margin-top: var(--s6);
+}
+
+.cited__row {
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.cited__head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+}
+
+.cited__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+}
+
+.cited__dim {
+  opacity: 0.6;
+}
+
+.cited__ago {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.cited__title {
+  margin-top: 3px;
+  font-size: var(--fs-card);
+  font-weight: 600;
+}
+
+.cited__text {
+  max-width: var(--prose);
+  margin-top: 1px;
+  color: var(--fg-2);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.cited__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+}
+
+.cited__meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── 往期 ──────────────────────────────────────────────────── */
+
+.past {
+  margin-top: var(--s6);
+}
+
+.past__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg-3);
+  text-align: left;
+}
+
+.past__row:hover {
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.past__day {
+  flex-shrink: 0;
+  color: var(--fg-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.past__peek {
+  flex: 1;
+  overflow: hidden;
+  color: var(--fg-3);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.past__n {
+  flex-shrink: 0;
+  font-size: var(--fs-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 767px) {
+  .day__date {
+    font-size: 26px;
+  }
+
+  .paper {
+    padding: var(--s4);
+  }
+}
+
+/* ── 引用条目的展开 ────────────────────────────────────────── */
+
+/* 标题本身可点 —— 点标题和点「看源消息」是同一件事。 */
+.cited__open {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.cited__open:hover {
+  color: var(--accent);
+}
+
+.cited__toggle {
+  padding: 0;
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cited__toggle:hover {
+  color: var(--accent);
+}
+
+/* 源消息块。左侧一道线把它与条目正文分开 —— 它是「依据」，
+ * 不是条目本身的一部分。 */
+.cited__srcs {
+  margin-top: var(--s2);
+  padding-left: var(--s3);
+  border-left: 1px solid var(--line-2);
+}
+
+.cited__src {
+  margin: var(--s2) 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.cited__src-head {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--fg-3);
+  font-size: 11.5px;
+}
+
+.cited__src p {
+  margin-top: 2px;
+  color: var(--fg-2);
+}
+
+.cited__srcs-err {
+  color: var(--danger);
+  font-size: 12.5px;
+}

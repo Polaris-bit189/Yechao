@@ -1,0 +1,32 @@
+# 夜抄 · 模型设置模板
+#
+# ⚠️ 复制成 `config/settings.toml` 再改（或者让程序首启时自动复制）。
+#
+# ## 两段配置，看的东西不同
+#
+# [llm]    —— 本地模型，看的是**原文**（只在本机内存里）
+# [cloud]  —— 云端模型，只看**脱敏后的结构化条目**
+#
+# 两段都可以不配：
+#   · 不配 [llm]   ⇒ refine 会拒绝跑并告诉你缺什么（网页仍可用）
+#   · 不配 [cloud] ⇒ 云端二次处理这一步跳过，其余照常
+#
+# ## 密钥不进这里
+#
+# 密钥走环境变量：YECHAO_API_KEY（本地）/ YECHAO_CLOUD_API_KEY（云端）。
+# 配置文件会被导出、会被提交，所以它不该有密钥。
+
+# [llm]
+# base_url = "http://127.0.0.1:11434/v1/chat/completions"
+# model = "qwen3:8b"
+#
+# ⚠️ enable_thinking 是**三态**：
+#   · 不写这个键  = **不发这个字段**（通用 OpenAI 端点最安全的形状）
+#   · = false     = 显式发 false（硅基流动 / Qwen 一类端点用这个）
+#   · = true      = 显式发 true
+# 「不发」与「发 false」在界面上看不出区别，报文里却是两个不同的东西。
+# enable_thinking = false
+
+# [cloud]
+# base_url = "https://你的端点/v1/chat/completions"
+# model = "你的模型名"

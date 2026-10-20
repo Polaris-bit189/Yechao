@@ -1,0 +1,112 @@
+/* 类目：一列紧凑列表，每行带三条真实预览。 */
+
+.kinds__hint {
+  margin-bottom: var(--s3);
+  color: var(--fg-3);
+  font-size: 12.5px;
+}
+
+.kinds {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 每行是一个长条，左侧一条色标贯穿整段。 */
+.kinds__row {
+  position: relative;
+  padding: var(--s3) var(--s4) var(--s3) calc(var(--s4) + 12px);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  background: color-mix(in srgb, var(--surface) 58%, transparent);
+  transition: border-color var(--t-fast) var(--ease);
+}
+
+.kinds__row:hover {
+  border-color: var(--line-2);
+}
+
+/* 绝对定位而不是 flex 子项 —— 段高由预览条数决定，flex 子项会被拉伸，
+ * 但圆角对不齐。 */
+.kinds__row::before {
+  content: '';
+  position: absolute;
+  top: var(--s3);
+  bottom: var(--s3);
+  left: var(--s3);
+  width: 2px;
+  border-radius: 1px;
+  background: var(--kc);
+}
+
+.kinds__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.kinds__icon {
+  display: inline-flex;
+  color: var(--kc);
+}
+
+.kinds__label {
+  color: var(--kc);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.kinds__n {
+  margin-left: auto;
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.kinds__peek {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 5px;
+  padding-left: 22px;
+}
+
+.kinds__peek li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: 1px 0;
+  font-size: 13px;
+}
+
+.kinds__peek-title {
+  overflow: hidden;
+  color: var(--fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kinds__peek-due {
+  flex-shrink: 0;
+  color: var(--fg-3);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kinds__none {
+  margin-top: 5px;
+  padding-left: 22px;
+  color: var(--fg-3);
+  font-size: 12.5px;
+}
+
+@media (max-width: 767px) {
+  .kinds__row {
+    padding: var(--s3) var(--s3) var(--s3) calc(var(--s3) + 12px);
+  }
+
+  .kinds__peek {
+    padding-left: 20px;
+  }
+}

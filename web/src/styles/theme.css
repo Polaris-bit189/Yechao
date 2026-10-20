@@ -1,0 +1,704 @@
+/* 主题。
+ *
+ * 六套：宵（默认）、雾、月、樱、幽进菜单，古登堡是彩蛋。
+ * 每套把**全部**变量写一遍 —— 不靠继承。继承的后果是「在 A 主题里
+ * 冒出 B 主题的值」，而这个问题只在切到那一套时才出现。
+ */
+
+:root {
+  /* 骨架与间距 —— 与主题无关，全站一套 */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  --rail: 224px;
+  --page: 896px;
+  --prose: 672px;
+
+  /* 字号阶。规格：日期 28–36 / 页面标题 22 / 卡片标题 15 / 正文 14 / 次要 12 / 标签 11 */
+  --fs-date: 32px;
+  --fs-title: 22px;
+  --fs-card: 15px;
+  --fs-body: 14px;
+  --fs-sub: 12px;
+  --fs-tag: 11px;
+}
+
+/* ── 宵 · 深更静夜 · 钢蓝 ─────────────────────────────────── */
+:root,
+[data-theme='yoi'] {
+  --bg: #0a0c12;
+  --bg-2: #0d1018;
+  --surface: #111621;
+  --surface-2: #171d2b;
+  --line: #1e2536;
+  --line-2: #2a3348;
+
+  --fg: #e7ecf6;
+  --fg-2: #adb6cb;
+  --fg-3: #6c7690;
+
+  --accent: #79a6cf;
+  --accent-weak: rgba(121, 166, 207, 0.13);
+  --on-accent: #0a0c12;
+
+  --danger: #de7f7f;
+  --danger-weak: rgba(222, 127, 127, 0.13);
+  --warn: #d6b16d;
+  --warn-weak: rgba(214, 177, 109, 0.13);
+  --ok: #7dc0a1;
+  --ok-weak: rgba(125, 192, 161, 0.13);
+
+  /* 七个类目色是语义色，几套主题里同值 —— 读者靠它认类目，不该随主题漂。 */
+  --k-notice: #8ec5e8;
+  --k-academic: #8fd0a4;
+  --k-activity: #e8c07a;
+  --k-life: #e3a8bd;
+  --k-secondhand: #e0a37a;
+  --k-lostfound: #bfaae3;
+  --k-job: #86d0c8;
+
+  --fx-glow: rgba(120, 160, 210, 0.09);
+  --fx-dot: rgba(180, 200, 240, 0.5);
+  /* ── 形状 ── */
+  --r1: 5px;
+  --r2: 9px;
+  --r3: 13px;
+
+  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
+  /* ── 浮层模糊 ── */
+  --blur: 8px;
+  /* ── 焦点环 ── */
+  --ring: 2px;
+  /* ── 字体。只用系统栈，不引网络字体 ── */
+  --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  /* ── 字距 ── */
+  --track-tight: 0.01em;
+  --track-wide: 0.16em;
+  /* ── 动效 ── */
+  --t-fast: 120ms;
+  --t-mid: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* ── 浮层遮罩 ── */
+  --scrim: rgba(0, 0, 0, 0.46);
+
+}
+
+/* ── 雾 · 赤夜红雾 · 朱砂 ─────────────────────────────────── */
+[data-theme='kiri'] {
+  --bg: #1a1016;
+  --bg-2: #20151b;
+  --surface: #261a21;
+  --surface-2: #2e2028;
+  --line: #3a2831;
+  --line-2: #4c3540;
+
+  --fg: #f3e9ec;
+  --fg-2: #c3aab3;
+  --fg-3: #8a717a;
+
+  --accent: #d86a70;
+  --accent-weak: rgba(216, 106, 112, 0.14);
+  --on-accent: #1a1016;
+
+  --danger: #e88a8a;
+  --danger-weak: rgba(232, 138, 138, 0.14);
+  --warn: #d9a86a;
+  --warn-weak: rgba(217, 168, 106, 0.14);
+  --ok: #7fc09a;
+  --ok-weak: rgba(127, 192, 154, 0.14);
+
+  --k-notice: #8ec5e8;
+  --k-academic: #8fd0a4;
+  --k-activity: #e8c07a;
+  --k-life: #e3a8bd;
+  --k-secondhand: #e0a37a;
+  --k-lostfound: #bfaae3;
+  --k-job: #86d0c8;
+
+  --fx-glow: rgba(190, 70, 80, 0.16);
+  --fx-dot: rgba(230, 130, 130, 0.42);
+  /* ── 形状 ── */
+  --r1: 5px;
+  --r2: 9px;
+  --r3: 13px;
+
+  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
+  /* ── 浮层模糊 ── */
+  --blur: 8px;
+  /* ── 焦点环 ── */
+  --ring: 2px;
+  /* ── 字体。只用系统栈，不引网络字体 ── */
+  --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  /* ── 字距 ── */
+  --track-tight: 0.01em;
+  --track-wide: 0.16em;
+  /* ── 动效 ── */
+  --t-fast: 120ms;
+  --t-mid: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* ── 浮层遮罩 ── */
+  --scrim: rgba(0, 0, 0, 0.46);
+
+}
+
+/* ── 月 · 满月清辉 · 冷银 ─────────────────────────────────── */
+[data-theme='tsuki'] {
+  --bg: #0e1526;
+  --bg-2: #121b2e;
+  --surface: #172138;
+  --surface-2: #1d2945;
+  --line: #24314a;
+  --line-2: #32425e;
+
+  --fg: #ebf2fc;
+  --fg-2: #b1bed7;
+  --fg-3: #77869f;
+
+  --accent: #8fd4e8;
+  --accent-weak: rgba(143, 212, 232, 0.13);
+  --on-accent: #0e1526;
+
+  --danger: #e8888f;
+  --danger-weak: rgba(232, 136, 143, 0.13);
+  --warn: #dfc07a;
+  --warn-weak: rgba(223, 192, 122, 0.13);
+  --ok: #86cfae;
+  --ok-weak: rgba(134, 207, 174, 0.13);
+
+  --k-notice: #9ccdf0;
+  --k-academic: #96d8ab;
+  --k-activity: #efc98a;
+  --k-life: #eab3c6;
+  --k-secondhand: #e9ad86;
+  --k-lostfound: #c8b4ec;
+  --k-job: #90d8d0;
+
+  --fx-glow: rgba(150, 200, 240, 0.15);
+  --fx-dot: rgba(200, 225, 255, 0.45);
+  /* ── 形状 ── */
+  --r1: 5px;
+  --r2: 9px;
+  --r3: 13px;
+
+  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
+  /* ── 浮层模糊 ── */
+  --blur: 8px;
+  /* ── 焦点环 ── */
+  --ring: 2px;
+  /* ── 字体。只用系统栈，不引网络字体 ── */
+  --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  /* ── 字距 ── */
+  --track-tight: 0.01em;
+  --track-wide: 0.16em;
+  /* ── 动效 ── */
+  --t-fast: 120ms;
+  --t-mid: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* ── 浮层遮罩 ── */
+  --scrim: rgba(0, 0, 0, 0.46);
+
+}
+
+/* ── 樱 · 春日落樱 · 灰粉 ─────────────────────────────────── */
+[data-theme='sakura'] {
+  --bg: #1b1319;
+  --bg-2: #211820;
+  --surface: #271c25;
+  --surface-2: #2f222c;
+  --line: #3a2935;
+  --line-2: #4c3646;
+
+  --fg: #f4ebf0;
+  --fg-2: #c6afba;
+  --fg-3: #8f7583;
+
+  --accent: #d8b0bf;
+  --accent-weak: rgba(216, 176, 191, 0.14);
+  --on-accent: #1b1319;
+
+  --danger: #e8909a;
+  --danger-weak: rgba(232, 144, 154, 0.14);
+  --warn: #ddb87a;
+  --warn-weak: rgba(221, 184, 122, 0.14);
+  --ok: #8cc9a8;
+  --ok-weak: rgba(140, 201, 168, 0.14);
+
+  --k-notice: #93c6e5;
+  --k-academic: #93d0a7;
+  --k-activity: #e8c486;
+  --k-life: #e8aec2;
+  --k-secondhand: #e2a884;
+  --k-lostfound: #c3b0e4;
+  --k-job: #8ccfc8;
+
+  --fx-glow: rgba(210, 150, 175, 0.11);
+  --fx-dot: rgba(240, 190, 205, 0.42);
+  /* ── 形状 ── */
+  --r1: 5px;
+  --r2: 9px;
+  --r3: 13px;
+
+  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
+  /* ── 浮层模糊 ── */
+  --blur: 8px;
+  /* ── 焦点环 ── */
+  --ring: 2px;
+  /* ── 字体。只用系统栈，不引网络字体 ── */
+  --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  /* ── 字距 ── */
+  --track-tight: 0.01em;
+  --track-wide: 0.16em;
+  /* ── 动效 ── */
+  --t-fast: 120ms;
+  --t-mid: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* ── 浮层遮罩 ── */
+  --scrim: rgba(0, 0, 0, 0.46);
+
+}
+
+/* ── 幽 · 幽明微光 · 幽绿 ─────────────────────────────────── */
+[data-theme='yuu'] {
+  --bg: #0a141a;
+  --bg-2: #0e1a22;
+  --surface: #12222c;
+  --surface-2: #172c37;
+  --line: #1e3540;
+  --line-2: #2a4754;
+
+  --fg: #e5f3f5;
+  --fg-2: #a5c3cb;
+  --fg-3: #6c8c96;
+
+  --accent: #5cc9b4;
+  --accent-weak: rgba(92, 201, 180, 0.13);
+  --on-accent: #0a141a;
+
+  --danger: #e08585;
+  --danger-weak: rgba(224, 133, 133, 0.13);
+  --warn: #d8bd76;
+  --warn-weak: rgba(216, 189, 118, 0.13);
+  --ok: #6fcfa8;
+  --ok-weak: rgba(111, 207, 168, 0.13);
+
+  --k-notice: #86c8e8;
+  --k-academic: #86d2a2;
+  --k-activity: #e5c37c;
+  --k-life: #e0a8bd;
+  --k-secondhand: #dfa47c;
+  --k-lostfound: #bcaae0;
+  --k-job: #7fd4c6;
+
+  --fx-glow: rgba(60, 200, 175, 0.11);
+  --fx-dot: rgba(120, 220, 200, 0.42);
+  /* ── 形状 ── */
+  --r1: 5px;
+  --r2: 9px;
+  --r3: 13px;
+
+  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
+  /* ── 浮层模糊 ── */
+  --blur: 8px;
+  /* ── 焦点环 ── */
+  --ring: 2px;
+  /* ── 字体。只用系统栈，不引网络字体 ── */
+  --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  /* ── 字距 ── */
+  --track-tight: 0.01em;
+  --track-wide: 0.16em;
+  /* ── 动效 ── */
+  --t-fast: 120ms;
+  --t-mid: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* ── 浮层遮罩 ── */
+  --scrim: rgba(0, 0, 0, 0.46);
+
+}
+
+/* ── 古登堡 · 铸字活版 · 朱砂油墨（彩蛋）───────────────────── */
+[data-theme='katsuji'] {
+  --bg: #12100c;
+  --bg-2: #16130e;
+  --surface: #1c1812;
+  --surface-2: #241f17;
+  --line: #302a20;
+  --line-2: #41392b;
+
+  --fg: #f0e8d8;
+  --fg-2: #c1b69e;
+  --fg-3: #8a7f68;
+
+  --accent: #c8624f;
+  --accent-weak: rgba(200, 98, 79, 0.15);
+  --on-accent: #12100c;
+
+  --danger: #d97b6a;
+  --danger-weak: rgba(217, 123, 106, 0.15);
+  --warn: #cfa85e;
+  --warn-weak: rgba(207, 168, 94, 0.15);
+  --ok: #8aa87a;
+  --ok-weak: rgba(138, 168, 122, 0.15);
+
+  --k-notice: #8fb3cf;
+  --k-academic: #8fb894;
+  --k-activity: #cfa85e;
+  --k-life: #c99bab;
+  --k-secondhand: #c9977a;
+  --k-lostfound: #a897c8;
+  --k-job: #82b3ad;
+
+  --fx-glow: rgba(180, 120, 70, 0.1);
+  --fx-dot: rgba(210, 180, 130, 0.38);
+  /* ── 形状 ── */
+  --r1: 5px;
+  --r2: 9px;
+  --r3: 13px;
+
+  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
+  /* ── 浮层模糊 ── */
+  --blur: 8px;
+  /* ── 焦点环 ── */
+  --ring: 2px;
+  /* ── 字体。只用系统栈，不引网络字体 ── */
+  --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  /* ── 字距 ── */
+  --track-tight: 0.01em;
+  --track-wide: 0.16em;
+  /* ── 动效 ── */
+  --t-fast: 120ms;
+  --t-mid: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* ── 浮层遮罩 ── */
+  --scrim: rgba(0, 0, 0, 0.46);
+
+}
+
+/* ── 背景 ───────────────────────────────────────────────────
+ *
+ * 规格给的动效纪律：只动 transform / opacity；光周期以分钟计，
+ * 粒子秒级；看得出在动但不像屏保；减少动效偏好能统一压掉。
+ *
+ * 粒子元素由 `Ambient` 按主题生成。这里只负责「长什么样」。
+ */
+
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sky__dot {
+  position: absolute;
+  opacity: 0;
+}
+
+/* 宵：右上斜光束，极慢地扫；四角星向光源聚集、明灭。 */
+[data-theme='yoi'] .sky {
+  background:
+    linear-gradient(
+      256deg,
+      transparent 53%,
+      rgba(120, 160, 210, 0.05) 57%,
+      rgba(120, 160, 210, 0.015) 61%,
+      transparent 65%
+    ),
+    radial-gradient(960px 520px at 80% -8%, var(--fx-glow), transparent 68%);
+  animation: beam 150s ease-in-out infinite alternate;
+}
+
+@keyframes beam {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: -1.6% 0.8%, 0 0;
+  }
+}
+
+/* 四角星用两条交叉细线画，比拼字符轻。 */
+[data-theme='yoi'] .sky__dot {
+  width: var(--w, 9px);
+  height: var(--w, 9px);
+  animation: twinkle var(--cycle, 10s) ease-in-out infinite;
+  animation-delay: var(--lag, 0s);
+}
+
+[data-theme='yoi'] .sky__dot::before,
+[data-theme='yoi'] .sky__dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--fx-dot);
+  clip-path: polygon(48% 0, 52% 0, 52% 100%, 48% 100%);
+}
+
+[data-theme='yoi'] .sky__dot::after {
+  clip-path: polygon(0 48%, 100% 48%, 100% 52%, 0 52%);
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  45%,
+  55% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+}
+
+/* 雾：两层暗红雾带 + 右上冷月光；雾絮横向漂。 */
+[data-theme='kiri'] .sky {
+  background:
+    radial-gradient(720px 400px at 86% -14%, rgba(200, 212, 232, 0.06), transparent 62%),
+    linear-gradient(172deg, rgba(150, 45, 55, 0.12) 0%, transparent 38%),
+    linear-gradient(188deg, rgba(120, 30, 40, 0.085) 0%, transparent 46%);
+  animation: fogband 100s ease-in-out infinite alternate;
+}
+
+@keyframes fogband {
+  from {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  to {
+    background-position: 0 0, 9% 0, -6% 0;
+  }
+}
+
+[data-theme='kiri'] .sky__dot {
+  width: var(--w, 180px);
+  height: var(--h, 54px);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(220, 120, 120, 0.07), transparent 70%);
+  filter: blur(13px);
+  animation: mist var(--cycle, 90s) linear infinite;
+  animation-delay: var(--lag, 0s);
+}
+
+@keyframes mist {
+  from {
+    opacity: 0.4;
+    transform: translateX(-16vw);
+  }
+  to {
+    opacity: 0.4;
+    transform: translateX(116vw);
+  }
+}
+
+/* 月：右上柔光月盘 + 外晕（无硬环）；薄云掠过。 */
+[data-theme='tsuki'] .sky {
+  background:
+    radial-gradient(circle 42px at 79% 9%, rgba(228, 240, 255, 0.12), transparent 72%),
+    radial-gradient(circle 140px at 79% 9%, rgba(150, 200, 240, 0.075), transparent 72%),
+    radial-gradient(1000px 560px at 79% 3%, var(--fx-glow), transparent 70%);
+}
+
+[data-theme='tsuki'] .sky__dot {
+  width: var(--w, 300px);
+  height: var(--h, 28px);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(200, 225, 255, 0.055), transparent 72%);
+  filter: blur(11px);
+  animation: cloudpass var(--cycle, 120s) linear infinite;
+  animation-delay: var(--lag, 0s);
+}
+
+@keyframes cloudpass {
+  0% {
+    opacity: 0;
+    transform: translateX(-24vw);
+  }
+  14% {
+    opacity: 0.55;
+  }
+  86% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(124vw);
+  }
+}
+
+/* 樱：两团余光；花瓣飘落，三套轨迹。 */
+[data-theme='sakura'] .sky {
+  background:
+    radial-gradient(760px 420px at 20% -8%, var(--fx-glow), transparent 66%),
+    radial-gradient(700px 460px at 86% 108%, rgba(210, 150, 175, 0.07), transparent 68%);
+}
+
+[data-theme='sakura'] .sky__dot {
+  width: var(--w, 6px);
+  height: calc(var(--w, 6px) * 1.7);
+  border-radius: 60% 40% 55% 45%;
+  background: var(--fx-dot);
+  animation:
+    petalfall var(--cycle, 26s) linear infinite,
+    petalsway calc(var(--cycle, 26s) / 6) ease-in-out infinite alternate;
+  animation-delay: var(--lag, 0s), var(--lag, 0s);
+}
+
+@keyframes petalfall {
+  0% {
+    opacity: 0;
+    transform: translateY(-8vh) rotate(0deg);
+  }
+  8% {
+    opacity: 0.42;
+  }
+  92% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(108vh) rotate(240deg);
+  }
+}
+
+/* 横摆用 margin —— 同一个元素上两条动画都改 transform 会互相覆盖。 */
+@keyframes petalsway {
+  from {
+    margin-left: 0;
+  }
+  to {
+    margin-left: var(--sway, 24px);
+  }
+}
+
+/* 幽：底部窄竖光；萤火浮动明灭。 */
+[data-theme='yuu'] .sky {
+  background:
+    linear-gradient(0deg, rgba(60, 200, 175, 0.075) 0%, transparent 22%),
+    radial-gradient(700px 380px at 50% 112%, var(--fx-glow), transparent 70%);
+}
+
+[data-theme='yuu'] .sky__dot {
+  width: var(--w, 4px);
+  height: var(--w, 4px);
+  border-radius: 50%;
+  background: var(--fx-dot);
+  box-shadow: 0 0 6px 1px var(--fx-dot);
+  animation:
+    firefly var(--cycle, 12s) ease-in-out infinite,
+    firefloat calc(var(--cycle, 12s) * 2.4) ease-in-out infinite alternate;
+  animation-delay: var(--lag, 0s), var(--lag, 0s);
+}
+
+@keyframes firefly {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  45%,
+  60% {
+    opacity: 0.58;
+  }
+}
+
+@keyframes firefloat {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(var(--sway, 18px), -22px);
+  }
+}
+
+/* 古登堡：排字格线走纸 + 月球 + 朱砂油墨；活字上浮。 */
+[data-theme='katsuji'] .sky {
+  background:
+    radial-gradient(circle 36px at 21% 12%, rgba(232, 222, 192, 0.05), transparent 72%),
+    radial-gradient(900px 500px at 21% 8%, rgba(200, 160, 110, 0.05), transparent 66%),
+    radial-gradient(820px 500px at 72% 108%, rgba(190, 60, 40, 0.06), transparent 70%);
+}
+
+/* 走纸：极淡横线，一格一格往下挪。 */
+[data-theme='katsuji'] .sky::before {
+  content: '';
+  position: absolute;
+  inset: -100% 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(210, 180, 130, 0.04) 0 1px,
+    transparent 1px 26px
+  );
+  animation: paperfeed 100s linear infinite;
+}
+
+@keyframes paperfeed {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(26px);
+  }
+}
+
+[data-theme='katsuji'] .sky__dot {
+  width: var(--w, 11px);
+  height: var(--w, 11px);
+  border: 1px solid rgba(210, 180, 130, 0.15);
+  background: rgba(210, 180, 130, 0.04);
+  animation: typerise var(--cycle, 46s) linear infinite;
+  animation-delay: var(--lag, 0s);
+}
+
+@keyframes typerise {
+  0% {
+    opacity: 0;
+    transform: translateY(22vh) rotate(0deg);
+  }
+  10% {
+    opacity: 0.42;
+  }
+  90% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22vh) rotate(90deg);
+  }
+}
+
+/* 统一压掉。前庭敏感的用户会被这些慢慢动的东西弄不适，而他们不会来提 issue。 */
+@media (prefers-reduced-motion: reduce) {
+  .sky,
+  .sky::before,
+  .sky__dot {
+    animation: none !important;
+  }
+}

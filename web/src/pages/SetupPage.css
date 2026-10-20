@@ -1,0 +1,430 @@
+/* 配置：二级标签 + 行列表 + 表单。 */
+
+.tabs {
+  display: flex;
+  gap: var(--s1);
+  margin-bottom: var(--s3);
+  border-bottom: 1px solid var(--line);
+}
+
+.tabs__btn {
+  padding: var(--s2) var(--s3);
+  border-bottom: 2px solid transparent;
+  color: var(--fg-3);
+  font-size: 13.5px;
+  transition: color var(--t-fast) var(--ease);
+}
+
+.tabs__btn:hover {
+  color: var(--fg-2);
+}
+
+.tabs__btn.is-on {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.hint {
+  margin-bottom: var(--s3);
+  color: var(--fg-3);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.msg {
+  margin: var(--s3) 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r1);
+  background: var(--surface);
+  color: var(--fg-2);
+  font-size: 12.5px;
+}
+
+.msg--bad {
+  color: var(--danger);
+}
+
+/* ── 行 ────────────────────────────────────────────────────── */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--s4);
+}
+
+/* 规格要求群那一行给出：群名 + 群号 + 消息数 + 最近活跃 + 抽出数，
+ * 所以排成一行、用间距区分。窄屏折行。 */
+.rows__line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r1);
+  background: color-mix(in srgb, var(--surface) 42%, transparent);
+  font-size: 12.5px;
+}
+
+.rows__name {
+  flex-shrink: 0;
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rows__dim {
+  flex-shrink: 0;
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.rows__note {
+  flex: 1;
+  overflow: hidden;
+  color: var(--fg-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 操作靠右。危险操作只给它自己上色，整行不变色 ——
+ * 整行变色会让人以为「这一行出错了」。 */
+.rows__acts {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--s2);
+  margin-left: auto;
+}
+
+.rows__acts button {
+  padding: 1px var(--s2);
+  border-radius: var(--r1);
+  color: var(--fg-3);
+  font-size: 12px;
+}
+
+.rows__acts button:hover {
+  background: var(--surface-2);
+  color: var(--fg-2);
+}
+
+.rows__acts button.is-danger {
+  color: var(--danger);
+}
+
+.rows__acts button.is-danger:hover {
+  background: var(--danger-weak);
+}
+
+.rows__acts button.is-primary {
+  color: var(--accent);
+}
+
+.rows__acts button.is-primary:hover {
+  background: var(--accent-weak);
+}
+
+/* ── 提示块 ────────────────────────────────────────────────── */
+
+.note {
+  margin-bottom: var(--s3);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r2);
+  background: color-mix(in srgb, var(--surface) 58%, transparent);
+  font-size: 12.5px;
+}
+
+.note strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.note p {
+  color: var(--fg-3);
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.note--warn {
+  border-color: color-mix(in srgb, var(--warn) 38%, transparent);
+  background: var(--warn-weak);
+}
+
+.note--warn strong {
+  color: var(--warn);
+}
+
+/* ── 表单 ──────────────────────────────────────────────────── */
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r2);
+}
+
+.form--col {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.field {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 130px;
+}
+
+.field span {
+  color: var(--fg-3);
+  font-size: 11.5px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  font-size: 13px;
+}
+
+.form button,
+.acts button,
+.save {
+  padding: var(--s1) var(--s3);
+  border-radius: var(--r1);
+  background: var(--accent-weak);
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.form button:hover,
+.acts button:hover,
+.save:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.save {
+  margin-top: var(--s3);
+}
+
+.acts {
+  display: flex;
+  gap: var(--s2);
+  margin: var(--s3) 0;
+}
+
+.toml {
+  width: 100%;
+  min-height: 300px;
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  background: var(--bg-2);
+  color: var(--fg-2);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+/* ── 导入结果 ──────────────────────────────────────────────── */
+
+.pack {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  background: color-mix(in srgb, var(--surface) 52%, transparent);
+  font-size: 12.5px;
+}
+
+.pack__title {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.pack__counts {
+  margin: 3px 0 var(--s2);
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.pack p {
+  color: var(--fg-2);
+  line-height: 1.7;
+}
+
+/* 警告与说明分开配色 —— 混成一种会让警告被当成普通说明划过去。 */
+.pack__warn {
+  margin-top: 3px;
+  color: var(--warn);
+}
+
+@media (max-width: 767px) {
+  /* 窄屏把行折成两截：名字一行，其余一行。 */
+  .rows__line {
+    flex-wrap: wrap;
+    gap: var(--s1) var(--s2);
+  }
+
+  .rows__acts {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+}
+
+/* ── 类目编辑 ──────────────────────────────────────────────── */
+
+.cats-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--s4);
+}
+
+.cats-edit__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r1);
+  background: color-mix(in srgb, var(--surface) 42%, transparent);
+  font-size: 12.5px;
+}
+
+.cats-edit__mark {
+  align-self: center;
+  width: 2px;
+  height: 12px;
+  border-radius: 1px;
+}
+
+.cats-edit__label {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 判据占掉剩下的宽度，超长时省略 —— 完整内容在编辑态里改。 */
+.cats-edit__descview {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cats-edit__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  width: 100%;
+}
+
+/* 判据是长文本，独占一行。 */
+.field--wide {
+  flex: 1 1 100%;
+}
+
+.cats-edit__desc {
+  width: 100%;
+  min-height: 72px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r1);
+  background: var(--bg-2);
+  color: var(--fg-2);
+  font-size: 12.5px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.cats-edit__desc:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.cats-edit__acts {
+  display: flex;
+  gap: var(--s2);
+  width: 100%;
+  margin-top: var(--s1);
+}
+
+.cats-edit__acts button {
+  padding: var(--s1) var(--s3);
+  border-radius: var(--r1);
+  color: var(--fg-2);
+  font-size: 12.5px;
+}
+
+.cats-edit__acts button:hover {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+
+.cats-edit__acts button.is-primary {
+  background: var(--accent-weak);
+  color: var(--accent);
+}
+
+.cats-edit__acts button.is-primary:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.cats-edit__acts button.is-danger {
+  color: var(--danger);
+}
+
+.cats-edit__acts button.is-danger:hover {
+  background: var(--danger-weak);
+}
+
+.cats-edit__migrate {
+  width: 100%;
+  margin: var(--s2) 0;
+  font-size: 12.5px;
+}
+
+/* ── 重排 ──────────────────────────────────────────────────── */
+
+.job {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  background: color-mix(in srgb, var(--surface) 52%, transparent);
+  font-size: 12.5px;
+}
+
+.job__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+}
+
+.job__state {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.job__msg {
+  margin-top: var(--s2);
+  color: var(--fg-2);
+}
+
+.job__err {
+  margin-top: var(--s2);
+  color: var(--danger);
+}

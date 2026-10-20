@@ -1,0 +1,378 @@
+/* 外壳：提醒条 + 导航 + 内容。 */
+
+.shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+}
+
+/* ── 导航 ──────────────────────────────────────────────────── */
+
+.rail {
+  position: fixed;
+  top: 36px;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: var(--rail);
+  padding: var(--s5) var(--s3) var(--s4);
+  border-right: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.rail__brand {
+  padding: 0 var(--s2) var(--s5);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* 品牌旁边的小字是「页面名徽标」的位置，固定不动 —— 切页面时它不跳。 */
+.rail__brand span {
+  margin-left: 7px;
+  color: var(--fg-3);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+}
+
+.rail__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.rail__link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px var(--s2);
+  border-radius: var(--r1);
+  color: var(--fg-2);
+  font-size: 13.5px;
+  text-align: left;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+
+/* 图标比文字淡一档：它是索引，不是内容。 */
+.rail__link svg {
+  color: var(--fg-3);
+}
+
+.rail__link:hover {
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.rail__link.is-on {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+
+/* 选中态的**圆点**。规格点名要它 —— 背景高亮在深色底上不够清楚，
+ * 而一个 4px 的圆点在任何主题里都能一眼看到。 */
+.rail__link.is-on::after {
+  content: '';
+  flex-shrink: 0;
+  width: 4px;
+  height: 4px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.rail__link.is-on svg {
+  color: var(--accent);
+}
+
+/* ── 导航底部 ──────────────────────────────────────────────── */
+
+.rail__tail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+.rail__small {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px var(--s2);
+  border-radius: var(--r1);
+  color: var(--fg-3);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.rail__small:hover {
+  background: var(--surface);
+  color: var(--fg-2);
+}
+
+.rail__theme {
+  position: relative;
+}
+
+/* 菜单向上弹 —— 下面没有空间了。 */
+.themebox {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 0;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r2);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.themebox__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  padding: 5px var(--s2);
+  border-radius: var(--r1);
+  color: var(--fg-2);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.themebox__row em {
+  color: var(--fg-3);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.themebox__row:hover {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+
+.themebox__row.is-on {
+  color: var(--accent);
+}
+
+.rail__help {
+  position: absolute;
+  right: var(--s3);
+  bottom: var(--s4);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--fg-3);
+}
+
+.rail__help:hover {
+  background: var(--surface);
+  color: var(--fg-2);
+}
+
+/* ── 内容 ──────────────────────────────────────────────────── */
+
+/* 内容区最大 896，居中偏左 —— 但不贴左，因为左侧有导航。 */
+/* 顶部留出提醒条的高度（36px）再加常规上边距 —— 提醒条是 fixed 的，
+ * 不占文档流。 */
+.main {
+  margin-left: var(--rail);
+  padding: calc(var(--s6) + 36px) var(--s5) var(--s7);
+}
+
+.main__col {
+  max-width: var(--page);
+  margin: 0 auto;
+}
+
+/* 正文段落自己收窄到 672 —— 一行超过 90 个字符就开始难读。
+ * 只对段落类内容生效，列表与网格仍用整宽。 */
+.prose {
+  max-width: var(--prose);
+}
+
+/* ── 提示条 ────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  bottom: var(--s5);
+  left: 50%;
+  z-index: 60;
+  transform: translateX(-50%);
+  padding: 8px var(--s4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r2);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color: var(--fg);
+  font-size: 13px;
+  animation: toastIn var(--t-mid) var(--ease);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ── 每个页面共用的页头 ────────────────────────────────────── */
+
+.phead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-bottom: var(--s5);
+}
+
+.phead__title {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* 标题下的小字标识：固定了每页的视觉锚点，切页面时位置不跳。 */
+.phead__tag {
+  margin-top: 2px;
+  color: var(--fg-3);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.phead__side {
+  flex-shrink: 0;
+  padding-bottom: 3px;
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+}
+
+/* ── 共用小件 ──────────────────────────────────────────────── */
+
+.quiet {
+  color: var(--fg-3);
+  font-size: 13.5px;
+}
+
+.fail {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--danger);
+  border-radius: var(--r2);
+  background: var(--danger-weak);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.fail button {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.seclabel {
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--line);
+  color: var(--fg-3);
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+/* ── 窄屏：导航变顶部两行 ──────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .rail {
+    position: sticky;
+    top: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    width: auto;
+    padding: var(--s2) var(--s3);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .rail__brand {
+    flex-shrink: 0;
+    padding: 0 var(--s3) 0 0;
+    font-size: 15px;
+  }
+
+  /* 页面标签横排，可以横滑。 */
+  .rail__nav {
+    flex-direction: row;
+    gap: 2px;
+    width: 100%;
+    margin-top: var(--s2);
+    overflow-x: auto;
+    order: 3;
+  }
+
+  .rail__link {
+    width: auto;
+    padding: 5px var(--s2);
+    white-space: nowrap;
+  }
+
+  .rail__link svg {
+    display: none;
+  }
+
+  .rail__tail {
+    flex-direction: row;
+    gap: var(--s2);
+    margin-top: 0;
+    margin-left: auto;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .rail__small {
+    width: auto;
+    padding: 4px var(--s2);
+  }
+
+  .rail__small svg {
+    display: none;
+  }
+
+  .rail__help {
+    position: static;
+  }
+
+  .main {
+    margin-left: 0;
+    padding: var(--s4) var(--s3) var(--s6);
+  }
+
+  /* 窄屏提醒条不固定 —— 那里空间太小，固定条会吃掉可见区域。 */
+  .remind {
+    position: static;
+    height: auto;
+    flex-wrap: wrap;
+    gap: var(--s1) var(--s2);
+    padding: var(--s2) var(--s3);
+    margin-bottom: var(--s3);
+  }
+
+  .phead__title {
+    font-size: 20px;
+  }
+}
