@@ -2,7 +2,7 @@
 
 /* ── 提醒条 ────────────────────────────────────────────────── */
 
-/* ⚠️ 用 `position: fixed` + 内容区留出上边距，而不是把它们塞进同一个
+/* ※ 用 `position: fixed` + 内容区留出上边距，而不是把它们塞进同一个
  * 文档流 —— 塞进去的话，它的高度一变（比如换行），下面所有内容都要重排，
  * 而它是一块「今天要不要看」的一次性提示，不该有这个权重。
  *
@@ -21,7 +21,7 @@
   padding: 0 var(--s5);
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-2) 92%, transparent);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(var(--blur));
   color: var(--fg-3);
   font-size: 12.5px;
 }
@@ -75,7 +75,7 @@
   border: 1px solid var(--line-2);
   border-radius: var(--r3);
   background: var(--surface);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 .helpcard h2 {
@@ -123,18 +123,20 @@
 
 /* ── 页面头 ────────────────────────────────────────────────── */
 
+/* ※ 这份与 App.css 里那份是重复定义（同一套规则写了两遍），
+   改一处要改两处，否则哪份后加载哪份生效。 */
 .phead {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--s4);
-  margin-bottom: var(--s5);
+  margin-bottom: var(--s4);
 }
 
 .phead__title {
   font-size: var(--fs-title);
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--track-tight);
 }
 
 /* 标题下的小字标识固定了每页的视觉锚点，切页面时位置不跳。 */
@@ -142,7 +144,7 @@
   margin-top: 2px;
   color: var(--fg-3);
   font-size: 10.5px;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
 }
 

@@ -159,7 +159,7 @@ export function StreamPage({ onChanged }: { onChanged: () => void }) {
         <input
           type="search"
           value={typing}
-          placeholder="搜标题或详情（两个字也能搜）"
+          placeholder="搜标题或正文，两个字起搜"
           aria-label="搜索条目"
           onChange={(e) => setTyping(e.target.value)}
         />
@@ -206,11 +206,11 @@ export function StreamPage({ onChanged }: { onChanged: () => void }) {
             <div className="people__list">
               {people.map((p) => (
                 <button
-                  key={p.uin}
+                  key={p.account}
                   type="button"
-                  className={persons.includes(p.uin) ? 'chip is-on' : 'chip'}
-                  aria-pressed={persons.includes(p.uin)}
-                  onClick={() => setPersons((cur) => toggle(cur, p.uin))}
+                  className={persons.includes(p.account) ? 'chip is-on' : 'chip'}
+                  aria-pressed={persons.includes(p.account)}
+                  onClick={() => setPersons((cur) => toggle(cur, p.account))}
                 >
                   {p.label}
                   <span className="chip__n">{p.count}</span>
@@ -414,7 +414,7 @@ function Sheet({
         <div className="sheet__top">
           <span style={{ color: kindColor(item.kind) }}>{item.kind_label}</span>
           <button type="button" aria-label="关闭" onClick={onClose}>
-            ✕
+            ×
           </button>
         </div>
 

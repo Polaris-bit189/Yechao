@@ -1,19 +1,19 @@
 /**
- * 时间。所有「哪一天」的判断都按**浏览器本地时区**。
+ * 时间。凡是「算哪一天」的判断，一律以**浏览器所在时区**为准。
  *
- * 这一点不是细节：日报在早上七点多读，那个时段在 UTC 下还算前一天，
- * 用 UTC 切天会把人刚收到的东西排到「昨天」。
+ * 这不是细枝末节：日报通常在早上七点多翻，那个钟点在 UTC 下还落在前一天，
+ * 拿 UTC 去切天，会把刚收到的内容甩到「昨天」那一栏。
  */
 
 const p2 = (n: number) => String(n).padStart(2, '0')
 
-/** 时间戳 → `YYYY-MM-DD`（本地日）。 */
+/** 时间戳 → `YYYY-MM-DD`（按本地日切）。 */
 export function ymd(ts: number): string {
   const d = new Date(ts * 1000)
   return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`
 }
 
-/** 今天。 */
+/** 今天的日期串。 */
 export function today(): string {
   return ymd(Math.floor(Date.now() / 1000))
 }
@@ -44,8 +44,8 @@ export function mdhmText(ts: number): string {
 /**
  * 分天标题。
  *
- * 判据是**日期差**而不是秒差：23:59 与次日 00:01 只差两分钟，
- * 但它们属于两天。
+ * 这里比的是**日期的差**，不是秒的差：23:59 和第二天 00:01 只隔两分钟，
+ * 却分属两天。
  */
 export function groupLabel(key: string): string {
   const t = today()
@@ -65,8 +65,8 @@ export function weekdayOf(ts: number): string {
 /**
  * 「多久之前」。
  *
- * 一天以内说相对时间，超过说日期。「23 小时前」比钟点更容易判断新旧，
- * 而「6 天前」就不如日期好读。
+ * 一天之内给相对时间，再远就换成日期。「23 小时前」比一个钟点更好判断新旧，
+ * 而「6 天前」读起来反倒不如日期清楚。
  */
 export function ago(ts: number, now = Date.now()): string {
   const diff = Math.floor(now / 1000) - ts
@@ -80,9 +80,10 @@ export function ago(ts: number, now = Date.now()): string {
 
 // ── 死线分级 ────────────────────────────────────────────────
 //
-// 边界与后端 `yechao/domain/days.py` 的 `deadline_level` 一致：
-// <0 已过期 / 0–1 紧急 / 2–3 临近 / 4–7 普通 / >7 回落日期。
-// 两边各写一份是知情取舍：日报正文由后端渲染时要用，日历要跟「此刻」变。
+// 分级边界与后端 `yechao/domain/days.py` 里的 `deadline_level` 对齐：
+// <0 已过期 / 0–1 紧急 / 2–3 临近 / 4–7 普通 / >7 回落成日期。
+// 前后端各留一份，是权衡之后的选择：日报正文交给后端渲染，那份分级要用得上；
+// 日历得随「此刻」走动，只能由前端这一份来算。
 
 export type DueLevel = 'expired' | 'urgent' | 'soon' | 'normal'
 

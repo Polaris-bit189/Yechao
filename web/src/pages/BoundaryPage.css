@@ -43,8 +43,11 @@
   gap: var(--s2);
 }
 
+/* 内边距压到 s2/s3、三行各自收紧行高：卡片里只有「标签 + 一个数 + 一行小字」，
+   给 16px 的内边距是把它当成了内容块，而它是个读数牌。
+   （改之前四张卡 92px 高、两张两行共 192px。） */
 .stat {
-  padding: var(--s3) var(--s4);
+  padding: var(--s2) var(--s3);
   border: 1px solid var(--line);
   border-radius: var(--r2);
   background: color-mix(in srgb, var(--surface) 52%, transparent);
@@ -53,20 +56,22 @@
 .stat__label {
   color: var(--fg-3);
   font-size: var(--fs-sub);
+  line-height: 1.35;
 }
 
 /* 数字是这页的主角：大字号、等宽，一眼能读到。 */
 .stat__value {
-  margin: 3px 0 2px;
-  font-size: 25px;
+  margin: 1px 0 0;
+  font-size: 22px;
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
 .stat__note {
   color: var(--fg-3);
-  font-size: 11.5px;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .stat--good .stat__value {
@@ -80,7 +85,7 @@
 /* 「未检查」用中性色。绿色等于替读者下了一个「没问题」的结论。 */
 .stat--idle .stat__value {
   color: var(--fg-3);
-  font-size: 19px;
+  font-size: 17px;
 }
 
 /* ── 说明 ──────────────────────────────────────────────────── */

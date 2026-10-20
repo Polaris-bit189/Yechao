@@ -6,6 +6,19 @@
   min-height: 100%;
 }
 
+/* 提醒条问过之后就不再出现，为它留的那 36px 也不该继续留着 ——
+   否则每页顶上永远压着一条空带，侧栏也跟着下移 36px。
+   ※ 只在桌面生效：窄屏的提醒条本来就在文档流里（static），没占这 36px。 */
+@media (min-width: 768px) {
+  .shell.is-bare .rail {
+    top: 0;
+  }
+
+  .shell.is-bare .main {
+    padding-top: var(--s6);
+  }
+}
+
 /* ── 导航 ──────────────────────────────────────────────────── */
 
 .rail {
@@ -20,7 +33,9 @@
   padding: var(--s5) var(--s3) var(--s4);
   border-right: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 90%, transparent);
-  backdrop-filter: blur(8px);
+  /* ※ `--blur` 是**主题身份**之一（古登堡 2px、雾 14px），不是常量 ——
+     写死 8px 会让六套主题的玻璃感一样，而那正是「只换了颜色」。 */
+  backdrop-filter: blur(var(--blur));
 }
 
 .rail__brand {
@@ -36,7 +51,8 @@
   color: var(--fg-3);
   font-size: 10px;
   font-weight: 400;
-  letter-spacing: 0.18em;
+  /* 小字徽标那一档字距 —— 与 `.phead__tag` 同一个角色，走同一个 token。 */
+  letter-spacing: var(--track-wide);
 }
 
 .rail__nav {
@@ -91,11 +107,18 @@
 
 /* ── 导航底部 ──────────────────────────────────────────────── */
 
+/* ※ 这里原来是 `margin-top: auto`，把「撤销 / 主题」推到侧栏最底。
+   但导航只有 6 个入口，在 1000px 高的窗口里中间会空掉近 570px（量过），
+   看上去像少画了一块。改成紧跟导航项：侧栏就是一段从上往下排完的内容，
+   空的是它下面那片背景，而不是它中间。
+   `position: relative` 是给绝对定位的 ⓘ 一个参照物（原来它参照整个侧栏，
+   于是会一个人留在最底下）。 */
 .rail__tail {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: auto;
+  margin-top: var(--s5);
   padding-top: var(--s3);
   border-top: 1px solid var(--line);
 }
@@ -131,7 +154,9 @@
   border: 1px solid var(--line-2);
   border-radius: var(--r2);
   background: var(--surface);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  /* ※ 浮层的投影走 token。写死一个 rgba 会让六套主题的浮层一样厚 ——
+     而「阴影厚度」在古登堡（零模糊硬边压印）与幽（最重）之间是**两种气质**。 */
+  box-shadow: var(--shadow);
 }
 
 .themebox__row {
@@ -161,10 +186,11 @@
   color: var(--accent);
 }
 
+/* 参照物是 `.rail__tail`，所以它会贴在「主题」那一行的右端。 */
 .rail__help {
   position: absolute;
-  right: var(--s3);
-  bottom: var(--s4);
+  right: 0;
+  bottom: 0;
   display: grid;
   place-items: center;
   width: 24px;
@@ -211,7 +237,7 @@
   border: 1px solid var(--line-2);
   border-radius: var(--r2);
   background: var(--surface);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow);
   color: var(--fg);
   font-size: 13px;
   animation: toastIn var(--t-mid) var(--ease);
@@ -230,18 +256,20 @@
 
 /* ── 每个页面共用的页头 ────────────────────────────────────── */
 
+/* 标题块到内容的距离。原来是 s5(24)，量下来在 1440×1000 上是 57–101px
+   （标题块自己的高度 + 后面那几行提示），收一档到 s4。 */
 .phead {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--s4);
-  margin-bottom: var(--s5);
+  margin-bottom: var(--s4);
 }
 
 .phead__title {
   font-size: var(--fs-title);
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--track-tight);
 }
 
 /* 标题下的小字标识：固定了每页的视觉锚点，切页面时位置不跳。 */
@@ -249,7 +277,7 @@
   margin-top: 2px;
   color: var(--fg-3);
   font-size: 10.5px;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
 }
 

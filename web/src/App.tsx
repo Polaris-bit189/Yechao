@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { stepBack } from './api'
 import { Sky } from './ui/Sky'
-import { Remind } from './ui/Remind'
+import { Remind, remindAnswered } from './ui/Remind'
 import { Help } from './ui/Help'
 import { DayPage } from './pages/DayPage'
 import { StreamPage } from './pages/StreamPage'
@@ -22,7 +22,7 @@ import {
   IcUndo,
 } from './ui/icons'
 import './App.css'
-// ⚠️ 这一行漏过一次：样式文件写好了、被引用的组件也渲染了，但没人 import
+// ※ 这一行漏过一次：样式文件写好了、被引用的组件也渲染了，但没人 import
 // 这份 CSS —— 于是提醒条、帮助卡、页面头的规则全部不生效。
 // 症状是「元素在、样式没了」，而控制台一个错都不报。
 import './ui/misc.css'
@@ -51,6 +51,8 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  // 提醒条问过没有。问过就不显示，顶部那 36px 也不留（见 App.css 的 .is-bare）。
+  const [remindDone, setRemindDone] = useState(remindAnswered)
 
   const refresh = useCallback(() => setTick((n) => n + 1), [])
 
@@ -82,11 +84,11 @@ export function App() {
     <>
       <Sky theme={theme} />
 
-      <div className="shell">
+      <div className={remindDone ? 'shell is-bare' : 'shell'}>
         <nav className="rail" aria-label="主导航">
           <div className="rail__brand">
             夜抄
-            {/* ⚠️ 这里原来写死成「日报」。规格要的是**页面名徽标** ——
+            {/* ※ 这里原来写死成「日报」。规格要的是**页面名徽标** ——
                 它得跟着当前页变，否则切到信息流时它还写着「日报」。 */}
             <span>{PAGES.find((x) => x.id === page)?.label ?? ''}</span>
           </div>
@@ -160,7 +162,7 @@ export function App() {
         <main className="main">
           {/* 提醒条压在内容区顶部，不盖住左侧导航 —— 它说的是这一页的事，
               不是全局状态。 */}
-          <Remind />
+          <Remind onDone={() => setRemindDone(true)} />
 
           <div className="main__col">
             {page === 'day' && <DayPage key={`d${tick}`} />}

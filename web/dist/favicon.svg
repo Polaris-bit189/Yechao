@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="夜抄">
+  <!--
+    图标讲的是这个产品本身在做什么，不是「夜晚」这个题材：
+      一弯月亮（夜里发生的事）＋ 两行长短不一的线（收成一份按天可读的清单）。
+    长短不一是有意的 —— 日报每天的行数不一样，一样长就成了「菜单」的样子。
+
+    颜色取默认主题「宵」的 bg / accent / fg（web/src/styles/theme.css）。
+    ※ 不用渐变、不用 emoji —— 界面规格里的硬约束同样适用于图标。
+  -->
+  <defs>
+    <mask id="crescent">
+      <rect width="64" height="64" fill="#000" />
+      <circle cx="26" cy="26" r="16" fill="#fff" />
+      <circle cx="33" cy="22" r="14" fill="#000" />
+    </mask>
+  </defs>
+
+  <rect width="64" height="64" rx="14" fill="#0a0c12" />
+  <circle cx="26" cy="26" r="16" fill="#79a6cf" mask="url(#crescent)" />
+
+  <g fill="#e7ecf6">
+    <rect x="14" y="46" width="26" height="3" rx="1.5" opacity="0.92" />
+    <rect x="14" y="52" width="17" height="3" rx="1.5" opacity="0.55" />
+  </g>
+</svg>

@@ -114,20 +114,51 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── 日历与当月清单并排 ────────────────────────────────────── */
+
+/* 日历固定在一列里（约 500px），剩下的宽度给当月清单。
+   ※ 日历**不再铺满内容区**：格子尺寸该由格子里的信息量决定，
+   而绝大多数格子里只有一个小圆点，甚至什么都没有。 */
+.monthwrap {
+  display: grid;
+  grid-template-columns: minmax(0, 500px) minmax(0, 1fr);
+  gap: var(--s4) var(--s5);
+  align-items: start;
+}
+
+.monthwrap__cal {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+/* 选中那一天的事项在日历**下方**（规格：默认选中今天，下方立刻显示当天事项）。 */
+.monthwrap__day {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.monthwrap__side {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
 /* ── 网格 ──────────────────────────────────────────────────── */
 
+/* 用格子自己的右/下边框画发丝线，而不是「grid 底色 + 1px 间距」——
+   后者会让留空格的背景色透出来，形成一块比留白更抢眼的实心块。 */
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-  padding: 1px;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
   border-radius: var(--r2);
-  background: var(--line);
 }
 
 .grid__wd {
   padding: var(--s1) 0;
-  background: var(--bg);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   color: var(--fg-3);
   font-size: 11.5px;
   text-align: center;
@@ -140,14 +171,21 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
-  aspect-ratio: 1 / 0.74;
-  background: var(--bg);
+  height: 62px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   color: var(--fg-2);
   font-size: 13px;
   transition: background var(--t-fast) var(--ease);
 }
 
-.grid__cell:hover:not(:disabled) {
+/* 不属于本月的那几格：只占位，不画底色、不给数字。
+   （原来它们带一层浅底色，看起来像四个空盒子。） */
+.grid__cell.is-void {
+  background: none;
+}
+
+.grid__cell:hover:not(.is-void) {
   background: var(--surface);
 }
 
@@ -189,8 +227,9 @@
 
 /* ── 当天到期 ──────────────────────────────────────────────── */
 
+/* 间距由 `.monthwrap` 的行间距给，这里不再自己加 —— 两处都加会双倍。 */
 .due {
-  margin-top: var(--s5);
+  margin-top: 0;
 }
 
 .due__list {
@@ -283,9 +322,104 @@
   white-space: nowrap;
 }
 
+/* ── 当月清单 ──────────────────────────────────────────────── */
+
+/* 只列「有事的那些天」。每一行是日期，行下面挂当天的条目标题。 */
+.mside {
+  display: flex;
+  flex-direction: column;
+}
+
+.mside__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  width: 100%;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg-2);
+  text-align: left;
+}
+
+.mside__row:hover {
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.mside__d {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mside__wd {
+  flex-shrink: 0;
+  color: var(--fg-3);
+  font-size: 11.5px;
+}
+
+.mside__n {
+  margin-left: auto;
+  color: var(--fg-3);
+  font-size: var(--fs-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 选中那一天在清单里也要看得出来 —— 否则点日历格时清单不会回应。 */
+.mside__row.is-on .mside__d {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.mside__items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s2) 0 var(--s3);
+}
+
+.mside__items li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.mside__bar {
+  flex-shrink: 0;
+  align-self: center;
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+}
+
+.mside__t {
+  overflow: hidden;
+  color: var(--fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mside__none {
+  padding: var(--s3) 0;
+  color: var(--fg-3);
+  font-size: 12.5px;
+}
+
 @media (max-width: 767px) {
+  /* 窄屏单列：日历 → 当天事项 → 当月清单，顺序与 DOM 一致。 */
+  .monthwrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .monthwrap__cal,
+  .monthwrap__day,
+  .monthwrap__side {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
   .grid__cell {
-    aspect-ratio: 1 / 0.86;
+    height: 54px;
     font-size: 12px;
   }
 

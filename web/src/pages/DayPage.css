@@ -65,11 +65,19 @@
   max-width: var(--prose);
 }
 
+/* 分节标题。节与节之间原来纯靠留白分开（24px 的空白，视觉上更像 40px，
+   因为 li 的行高也占位置），读起来像一整块。加一条发丝线把它切成节，
+   同时把外间距收回来 —— 线本身代替了一部分空白，总高不变。 */
 .paper__h2 {
-  margin: var(--s5) 0 var(--s2);
+  margin: var(--s3) 0 var(--s2);
   color: var(--fg);
   font-size: 13px;
   letter-spacing: 0.1em;
+}
+
+.paper__h2:not(:first-child) {
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
 }
 
 .paper__h2:first-child {

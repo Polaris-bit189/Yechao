@@ -12,10 +12,12 @@
   gap: 2px;
 }
 
-/* 每行是一个长条，左侧一条色标贯穿整段。 */
+/* 每行是一个长条，左侧一条色标贯穿整段。
+   上下内边距压到 s2：七个块加上标题原本撑满一屏，块内部的行距收一档后
+   一屏能多露出一块。 */
 .kinds__row {
   position: relative;
-  padding: var(--s3) var(--s4) var(--s3) calc(var(--s4) + 12px);
+  padding: var(--s2) var(--s4) var(--s2) calc(var(--s4) + 12px);
   border: 1px solid var(--line);
   border-radius: var(--r2);
   background: color-mix(in srgb, var(--surface) 58%, transparent);
@@ -24,6 +26,27 @@
 
 .kinds__row:hover {
   border-color: var(--line-2);
+}
+
+/* 空类目（这一类还没有条目）少给一点视觉重量。
+   ※ 只改外观，**不动后端语料** —— 把「这类本来就是空的」说成有内容，
+   比页面显得空更糟。 */
+.kinds__row.is-empty {
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  background: none;
+}
+
+.kinds__row.is-empty::before {
+  background: color-mix(in srgb, var(--kc) 42%, transparent);
+}
+
+.kinds__row.is-empty .kinds__label {
+  color: var(--fg-3);
+  font-weight: 400;
+}
+
+.kinds__row.is-empty .kinds__icon {
+  opacity: 0.7;
 }
 
 /* 绝对定位而不是 flex 子项 —— 段高由预览条数决定，flex 子项会被拉伸，
@@ -66,8 +89,7 @@
 .kinds__peek {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  margin-top: 5px;
+  margin-top: 4px;
   padding-left: 22px;
 }
 
@@ -76,8 +98,8 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--s3);
-  padding: 1px 0;
   font-size: 13px;
+  line-height: 1.5;
 }
 
 .kinds__peek-title {

@@ -89,7 +89,10 @@ textarea:focus {
 
 /* 焦点环是键盘用户唯一的定位线索。去掉又不给替代，键盘就没法用。 */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  /* ※ 粗细走 `--ring`，不写死 2px —— 它是主题 token（六套同值，
+     因为它属于可用性而不属于气质，但**同值也要有个名字**：
+     写死的话，下一套主题想调它就得先来改这里）。 */
+  outline: var(--ring) solid var(--accent);
   outline-offset: 2px;
 }
 

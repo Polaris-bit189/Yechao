@@ -170,7 +170,7 @@ function Piece({ block }: { block: Block }) {
  * 右上角给「多久之前」而不是钟点：读日报时想知道的是这条新不新，
  * 不是它几点几分发的。
  *
- * ⚠️ 规格要求「**可展开看源消息**」。展开时才去拉详情 ——
+ * ※ 规格要求「**可展开看源消息**」。展开时才去拉详情 ——
  * 一页十条条目各拉一次详情会让首屏慢一拍，而大多数时候没人会点开。
  */
 function Cited({ item }: { item: Item }) {
@@ -238,7 +238,7 @@ function Cited({ item }: { item: Item }) {
           {busy && <p className="cited__dim">读取源消息…</p>}
           {err && <p className="cited__srcs-err">{err}</p>}
           {srcs && srcs.length === 0 && (
-            <p className="cited__dim">这条没有可回溯的源消息（抽取时没记下来源）。</p>
+            <p className="cited__dim">这条查不到源消息 —— 抽取时没把来源记下来。</p>
           )}
           {srcs?.map((s) => (
             <blockquote key={s.msg_id} className="cited__src">

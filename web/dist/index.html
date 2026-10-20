@@ -5,9 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0a0c12" />
+    <!--
+      ※ SVG 图标，不是 PNG。这一版**不是 PWA**（没有 manifest、没有 service
+      worker），所以不需要 192/512 那套位图；只补一个标签页图标。
+      浏览器不支持 SVG 图标时会回落成默认空白 —— 那是**可见的缺失**，
+      比挂一个坏链接好。
+    -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>夜抄</title>
-    <script type="module" crossorigin src="./assets/index-BNlz-2ad.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CuQA_EwJ.css">
+    <script type="module" crossorigin src="./assets/index-CTte2R-m.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DoSgcg0Y.css">
   </head>
   <body>
     <div id="root"></div>

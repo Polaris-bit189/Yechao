@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { parse, stripLeadMark } from './md'
+import { parse } from './md'
 
 describe('标题', () => {
   it('## 与 ### 分别映射到 h2 / h3', () => {
@@ -22,7 +22,7 @@ describe('标题', () => {
     ])
   })
 
-  it('⚠️ 只跳开头的第一处一级标题', () => {
+  it('※ 只跳开头的第一处一级标题', () => {
     // 正文中间的一级标题不该被吃掉——模板变了的时候还得显示出来。
     const blocks = parse('# 夜抄日报\n\n正文\n\n# 中途的标题')
     expect(blocks).toEqual([
@@ -86,7 +86,7 @@ describe('段落', () => {
   })
 })
 
-describe('⚠️ 跳过与预览同源的概述段', () => {
+describe('※ 跳过与预览同源的概述段', () => {
   const PREVIEW = '今天有三件事需要你注意：体检、报名、讲座。'
 
   it('开头对得上的那段被跳过', () => {
@@ -121,29 +121,11 @@ describe('⚠️ 跳过与预览同源的概述段', () => {
     ])
   })
 
-  it('⚠️ 两样都要跳，否则同一句话会出现两次', () => {
+  it('※ 两样都要跳，否则同一句话会出现两次', () => {
     const md = ['# 夜抄日报 · 9月16日', PREVIEW, '## 通知'].join('\n\n')
     const blocks = parse(md, PREVIEW)
     // 标题与概述都不该出现在结果里。
     expect(blocks.some((b) => b.t === 'p')).toBe(false)
-  })
-})
-
-describe('stripLeadMark', () => {
-  it('去掉开头的 emoji', () => {
-    expect(stripLeadMark('📋 通知公告')).toBe('通知公告')
-  })
-
-  it('正文里的符号不动', () => {
-    expect(stripLeadMark('通知 📋 公告')).toBe('通知 📋 公告')
-  })
-
-  it('⚠️ 剥空了要还原原样，不留空标题', () => {
-    expect(stripLeadMark('📋')).toBe('📋')
-  })
-
-  it('普通文字原样返回', () => {
-    expect(stripLeadMark('通知公告')).toBe('通知公告')
   })
 })
 

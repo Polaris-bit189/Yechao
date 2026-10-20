@@ -1,6 +1,5 @@
 import {
   IcBox,
-  IcCap,
   IcFileSearch,
   IcFileText,
   IcHome,
@@ -104,24 +103,34 @@ export function watchEgg(fn: () => void): () => void {
 // 未知 slug 回落到中性色 + Tag 图标，不回落 emoji：同一屏混两种图标
 // 语言比一个陌生的图标更糟。
 
+// ※ 这两张表按**类目 slug** 映射，而 slug 由后端定
+// （`yechao/domain/categories.py` 的六个动作类目）。加一个类目就要在这里
+// 补两行；漏了不会报错，只会回落到 `KIND_FALLBACK_ICON` 与 `--fg-3` ——
+// 而那个回落**看起来是正常的**，所以别指望它提醒你。
 const KIND_COLOR: Record<string, string> = {
-  notice: 'var(--k-notice)',
-  academic: 'var(--k-academic)',
-  activity: 'var(--k-activity)',
-  life: 'var(--k-life)',
-  secondhand: 'var(--k-secondhand)',
-  lostfound: 'var(--k-lostfound)',
-  job: 'var(--k-job)',
+  // 「要办的事」是最需要一眼认出的那一类，用最亮的蓝。
+  todo: 'var(--k-todo)',
+  attend: 'var(--k-attend)',
+  // 「只要知道」不需要动作，给最弱的那一档（粉）。
+  know: 'var(--k-know)',
+  claim: 'var(--k-claim)',
+  trade: 'var(--k-trade)',
+  recruit: 'var(--k-recruit)',
 }
 
 const KIND_ICON: Record<string, (p: { size?: number }) => React.ReactElement> = {
-  notice: IcFileText,
-  academic: IcCap,
-  activity: IcMic,
-  life: IcHome,
-  secondhand: IcBox,
-  lostfound: IcFileSearch,
-  job: IcBriefcase,
+  // 文件 = 一份要填要交的东西 ⇒ 「要办的事」。
+  todo: IcFileText,
+  // 话筒 = 一个台子、一场活动 ⇒ 「要到场的事」。
+  attend: IcMic,
+  // 房子 = 日常安排（放假、维修、菜谱）⇒ 「只要知道」。
+  know: IcHome,
+  // 放大镜照着文件 = 在一堆东西里找一件 ⇒ 「失物招领」。
+  claim: IcFileSearch,
+  // 箱子 = 一件要出手的东西 ⇒ 「转让求购」。
+  trade: IcBox,
+  // 公文包 = 一个岗位 ⇒ 「招人」。
+  recruit: IcBriefcase,
 }
 
 const KIND_FALLBACK_ICON = IcTag

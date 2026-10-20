@@ -1,8 +1,36 @@
 /* 主题。
  *
  * 六套：宵（默认）、雾、月、樱、幽进菜单，古登堡是彩蛋。
- * 每套把**全部**变量写一遍 —— 不靠继承。继承的后果是「在 A 主题里
+ * 每套把**全部**主题变量写一遍 —— 不靠继承。继承的后果是「在 A 主题里
  * 冒出 B 主题的值」，而这个问题只在切到那一套时才出现。
+ *
+ * ── 这个文件里只有两种块，判据是「它是否属于某套主题的气质」──
+ *
+ *   ① `:root` —— **只放全站唯一**的东西：间距刻度、页面骨架、字号阶。
+ *      它们不属于任何一套主题。宵和古登堡的正文一样是 14px、一样的
+ *      页宽；把这些挂到主题上，只会让「主题」这个词失去边界。
+ *
+ *   ② 主题块 —— 42 个 token 写满，一个不落。
+ *
+ * ── 为什么圆角/阴影/模糊/字体/字距/动效也在主题块里 ──
+ *
+ * 它们**是主题身份**，不是全局常量。「方角主题」和「圆角主题」是两种气质：
+ * 只换底色的那叫换皮肤。所以这 13 个结构 token 逐块写满、各给各的值 ——
+ * 宵的圆角收着，樱的圆角开着，古登堡的圆角是 0；雾的阴影散，铅印的阴影
+ * 是零模糊的硬边。每组值旁边写了「这套为什么是这个手感」。
+ *
+ * ── 默认那套为什么写 `:root:not([data-theme])` 而不是裸 `:root` ──
+ *
+ * 裸 `:root` 在**任何**主题下都命中。于是别的主题漏写一个 token 时会被它
+ * 静默兜住：看起来是「继承」，实际是「某个主题下冒出了宵的值」，而从代码上
+ * 看不出为什么。`not([data-theme])` 只在天亮之前（JS 还没挂属性）兜底，
+ * 属性一挂上就交出去。
+ *
+ * 这条不靠自觉：`src/styles/theme.test.ts` 断言全局块与主题块的 token 名
+ * 集合**不相交** —— 兜底的路被堵死，漏写只能是测试红。
+ *
+ * ※ 加 token 时六块一起加。parity 测试遍历的是六块（**含彩蛋 katsuji**），
+ * 漏一块立刻红。
  */
 
 :root {
@@ -28,8 +56,10 @@
   --fs-tag: 11px;
 }
 
+/* ══ 主题块从这里开始。下面六块，每块 42 个 token，集合必须完全相等。══ */
+
 /* ── 宵 · 深更静夜 · 钢蓝 ─────────────────────────────────── */
-:root,
+:root:not([data-theme]),
 [data-theme='yoi'] {
   --bg: #0a0c12;
   --bg-2: #0d1018;
@@ -54,42 +84,53 @@
   --ok-weak: rgba(125, 192, 161, 0.13);
 
   /* 七个类目色是语义色，几套主题里同值 —— 读者靠它认类目，不该随主题漂。 */
-  --k-notice: #8ec5e8;
-  --k-academic: #8fd0a4;
-  --k-activity: #e8c07a;
-  --k-life: #e3a8bd;
-  --k-secondhand: #e0a37a;
-  --k-lostfound: #bfaae3;
-  --k-job: #86d0c8;
+  --k-todo: #8ec5e8;
+  --k-attend: #e8c07a;
+  --k-know: #e3a8bd;
+  --k-claim: #bfaae3;
+  --k-trade: #e0a37a;
+  --k-recruit: #86d0c8;
 
   --fx-glow: rgba(120, 160, 210, 0.09);
   --fx-dot: rgba(180, 200, 240, 0.5);
-  /* ── 形状 ── */
-  --r1: 5px;
-  --r2: 9px;
-  --r3: 13px;
 
-  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
-  /* ── 浮层模糊 ── */
+  /* ── 形状 ──
+   * 比通用刻度各收 1px。宵要的是「几乎察觉不到」：圆角一大，界面就开始
+   * 显得软、显得在招呼你。形状上先收着，气质才立得住。 */
+  --r1: 4px;
+  --r2: 8px;
+  --r3: 12px;
+
+  /* ── 浮层阴影。※ 卡片不用，只有浮层用 ──
+   * 底色本来就深，阴影要够重才浮得起来；但 blur 不能大 —— 散开就成了雾，
+   * 而雾是另一套主题。近一点、深一点。 */
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.50);
+  /* ── 浮层模糊 ──
+   * 中间档。再透就看得见底下压着的字，夜里那叫脏。 */
   --blur: 8px;
-  /* ── 焦点环 ── */
+  /* ── 焦点环 ──
+   * 宽度六套同值：键盘用户靠它定位，这是可用性不是气质。 */
   --ring: 2px;
-  /* ── 字体。只用系统栈，不引网络字体 ── */
+  /* ── 字体。只用系统栈，不引网络字体 ──
+   * 宵/雾/月/樱/幽 五套同栈是有意的：界面字形一换，读起来就像另一个产品，
+   * 而这五套的差别在形状、光与动效上，不在字形上。唯一换字体的是古登堡
+   * （衬线/宋体 —— 活版的血统，见那一块）。 */
   --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  /* 等宽只服务于代码与数字，换栈换不来气质差别，还可能落到缺字的字体上。
+   * 六套同值，理由写在这里。 */
   --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  /* ── 字距 ── */
+  /* ── 字距 ── 夜里的字要透气，但只透一点。 */
   --track-tight: 0.01em;
   --track-wide: 0.16em;
-  /* ── 动效 ── */
+  /* ── 动效 ── 干脆、不拖。宵的动效不该被注意到。 */
   --t-fast: 120ms;
   --t-mid: 200ms;
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-  /* ── 浮层遮罩 ── */
+  /* ── 浮层遮罩 ──
+   * 六套同值：遮罩只负责「把后面压暗」，压多少是功能，不是气质。 */
   --scrim: rgba(0, 0, 0, 0.46);
-
 }
 
 /* ── 雾 · 赤夜红雾 · 朱砂 ─────────────────────────────────── */
@@ -116,42 +157,46 @@
   --ok: #7fc09a;
   --ok-weak: rgba(127, 192, 154, 0.14);
 
-  --k-notice: #8ec5e8;
-  --k-academic: #8fd0a4;
-  --k-activity: #e8c07a;
-  --k-life: #e3a8bd;
-  --k-secondhand: #e0a37a;
-  --k-lostfound: #bfaae3;
-  --k-job: #86d0c8;
+  --k-todo: #8ec5e8;
+  --k-attend: #e8c07a;
+  --k-know: #e3a8bd;
+  --k-claim: #bfaae3;
+  --k-trade: #e0a37a;
+  --k-recruit: #86d0c8;
 
   --fx-glow: rgba(190, 70, 80, 0.16);
   --fx-dot: rgba(230, 130, 130, 0.42);
-  /* ── 形状 ── */
-  --r1: 5px;
-  --r2: 9px;
-  --r3: 13px;
 
-  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
-  /* ── 浮层模糊 ── */
-  --blur: 8px;
-  /* ── 焦点环 ── */
+  /* ── 形状 ──
+   * 雾**没有硬边**。圆角开到 20px 这一档，边角像被水汽磨掉 —— 这是这套
+   * 主题唯一说得通的形状。 */
+  --r1: 8px;
+  --r2: 14px;
+  --r3: 20px;
+
+  /* ── 浮层阴影。※ 卡片不用，只有浮层用 ──
+   * 雾散射光：阴影要**大 blur、低 alpha**，边界糊掉。硬阴影在雾里不成立，
+   * 那会像一块板子掉进雾里。 */
+  --shadow: 0 12px 36px rgba(0, 0, 0, 0.34);
+  --shadow-lg: 0 22px 56px rgba(0, 0, 0, 0.42);
+  /* ── 浮层模糊 ── 最重的一档：浮层要像隔着一层水汽。 */
+  --blur: 14px;
+  /* ── 焦点环 ── 同宵。 */
   --ring: 2px;
-  /* ── 字体。只用系统栈，不引网络字体 ── */
+  /* ── 字体。同宵（五套同栈的理由写在宵那块）。 ── */
   --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  /* 同宵。 */
   --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  /* ── 字距 ── */
-  --track-tight: 0.01em;
-  --track-wide: 0.16em;
-  /* ── 动效 ── */
-  --t-fast: 120ms;
-  --t-mid: 200ms;
-  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-  /* ── 浮层遮罩 ── */
+  /* ── 字距 ── 字被水汽撑开，比宵松一档。 */
+  --track-tight: 0.02em;
+  --track-wide: 0.20em;
+  /* ── 动效 ── 雾慢：慢进慢出，像扩散。**没有回弹** —— 雾不回弹。 */
+  --t-fast: 160ms;
+  --t-mid: 300ms;
+  --ease: cubic-bezier(0.35, 0.05, 0.25, 1);
+  /* ── 浮层遮罩 ── 同宵。 */
   --scrim: rgba(0, 0, 0, 0.46);
-
 }
 
 /* ── 月 · 满月清辉 · 冷银 ─────────────────────────────────── */
@@ -178,42 +223,45 @@
   --ok: #86cfae;
   --ok-weak: rgba(134, 207, 174, 0.13);
 
-  --k-notice: #9ccdf0;
-  --k-academic: #96d8ab;
-  --k-activity: #efc98a;
-  --k-life: #eab3c6;
-  --k-secondhand: #e9ad86;
-  --k-lostfound: #c8b4ec;
-  --k-job: #90d8d0;
+  --k-todo: #9ccdf0;
+  --k-attend: #efc98a;
+  --k-know: #eab3c6;
+  --k-claim: #c8b4ec;
+  --k-trade: #e9ad86;
+  --k-recruit: #90d8d0;
 
   --fx-glow: rgba(150, 200, 240, 0.15);
   --fx-dot: rgba(200, 225, 255, 0.45);
-  /* ── 形状 ── */
-  --r1: 5px;
-  --r2: 9px;
-  --r3: 13px;
 
-  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
-  /* ── 浮层模糊 ── */
-  --blur: 8px;
-  /* ── 焦点环 ── */
+  /* ── 形状 ──
+   * 月盘是圆的，清辉是锐的。取中间偏圆：比宵圆一档，比雾方一档。 */
+  --r1: 6px;
+  --r2: 10px;
+  --r3: 14px;
+
+  /* ── 浮层阴影。※ 卡片不用，只有浮层用 ──
+   * 月夜对比强，阴影要**清、要锐**：blur 小、alpha 高。糊的阴影在月光下
+   * 看起来像脏，而不是像影。 */
+  --shadow: 0 6px 18px rgba(0, 0, 0, 0.46);
+  --shadow-lg: 0 14px 34px rgba(0, 0, 0, 0.54);
+  /* ── 浮层模糊 ── 清辉不该糊，比宵还少一点。 */
+  --blur: 6px;
+  /* ── 焦点环 ── 同宵。 */
   --ring: 2px;
-  /* ── 字体。只用系统栈，不引网络字体 ── */
+  /* ── 字体。同宵。 ── */
   --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  /* 同宵。 */
   --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  /* ── 字距 ── */
-  --track-tight: 0.01em;
-  --track-wide: 0.16em;
-  /* ── 动效 ── */
-  --t-fast: 120ms;
-  --t-mid: 200ms;
-  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-  /* ── 浮层遮罩 ── */
+  /* ── 字距 ── 正文收得更紧（像银器上刻的字），标签反而拉开。 */
+  --track-tight: 0.005em;
+  --track-wide: 0.18em;
+  /* ── 动效 ── 快出、稳停，没有余韵。月亮不走回头路。 */
+  --t-fast: 110ms;
+  --t-mid: 180ms;
+  --ease: cubic-bezier(0.16, 0.84, 0.44, 1);
+  /* ── 浮层遮罩 ── 同宵。 */
   --scrim: rgba(0, 0, 0, 0.46);
-
 }
 
 /* ── 樱 · 春日落樱 · 灰粉 ─────────────────────────────────── */
@@ -240,42 +288,46 @@
   --ok: #8cc9a8;
   --ok-weak: rgba(140, 201, 168, 0.14);
 
-  --k-notice: #93c6e5;
-  --k-academic: #93d0a7;
-  --k-activity: #e8c486;
-  --k-life: #e8aec2;
-  --k-secondhand: #e2a884;
-  --k-lostfound: #c3b0e4;
-  --k-job: #8ccfc8;
+  --k-todo: #93c6e5;
+  --k-attend: #e8c486;
+  --k-know: #e8aec2;
+  --k-claim: #c3b0e4;
+  --k-trade: #e2a884;
+  --k-recruit: #8ccfc8;
 
   --fx-glow: rgba(210, 150, 175, 0.11);
   --fx-dot: rgba(240, 190, 205, 0.42);
-  /* ── 形状 ── */
-  --r1: 5px;
-  --r2: 9px;
-  --r3: 13px;
 
-  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
-  /* ── 浮层模糊 ── */
-  --blur: 8px;
-  /* ── 焦点环 ── */
+  /* ── 形状 ──
+   * 花瓣没有角。六套里最圆的一档 —— 与古登堡的 0 正好是两个极端。 */
+  --r1: 10px;
+  --r2: 16px;
+  --r3: 24px;
+
+  /* ── 浮层阴影。※ 卡片不用，只有浮层用 ──
+   * 花落是轻的：阴影要浅、要软。颜色带一点暖红而不是纯黑 —— 纯黑的影子
+   * 落在灰粉底子上会发冷，那不是春天。 */
+  --shadow: 0 10px 28px rgba(36, 14, 24, 0.32);
+  --shadow-lg: 0 20px 48px rgba(36, 14, 24, 0.40);
+  /* ── 浮层模糊 ── 比宵透一档：花瓣后面该是虚的。 */
+  --blur: 10px;
+  /* ── 焦点环 ── 同宵。 */
   --ring: 2px;
-  /* ── 字体。只用系统栈，不引网络字体 ── */
+  /* ── 字体。同宵。 ── */
   --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  /* 同宵。 */
   --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  /* ── 字距 ── */
-  --track-tight: 0.01em;
-  --track-wide: 0.16em;
-  /* ── 动效 ── */
-  --t-fast: 120ms;
-  --t-mid: 200ms;
-  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-  /* ── 浮层遮罩 ── */
+  /* ── 字距 ── 花瓣之间有缝，字也要有缝。比宵松。 */
+  --track-tight: 0.015em;
+  --track-wide: 0.22em;
+  /* ── 动效 ── 规格要「看得出在落」。落这件事的余韵在**收尾**：这条曲线
+   * 末端超过 1 再回落，像花瓣触地之后弹一下。其余五套都不带过冲。 */
+  --t-fast: 150ms;
+  --t-mid: 260ms;
+  --ease: cubic-bezier(0.22, 0.9, 0.28, 1.08);
+  /* ── 浮层遮罩 ── 同宵。 */
   --scrim: rgba(0, 0, 0, 0.46);
-
 }
 
 /* ── 幽 · 幽明微光 · 幽绿 ─────────────────────────────────── */
@@ -302,42 +354,45 @@
   --ok: #6fcfa8;
   --ok-weak: rgba(111, 207, 168, 0.13);
 
-  --k-notice: #86c8e8;
-  --k-academic: #86d2a2;
-  --k-activity: #e5c37c;
-  --k-life: #e0a8bd;
-  --k-secondhand: #dfa47c;
-  --k-lostfound: #bcaae0;
-  --k-job: #7fd4c6;
+  --k-todo: #86c8e8;
+  --k-attend: #e5c37c;
+  --k-know: #e0a8bd;
+  --k-claim: #bcaae0;
+  --k-trade: #dfa47c;
+  --k-recruit: #7fd4c6;
 
   --fx-glow: rgba(60, 200, 175, 0.11);
   --fx-dot: rgba(120, 220, 200, 0.42);
-  /* ── 形状 ── */
-  --r1: 5px;
-  --r2: 9px;
-  --r3: 13px;
 
-  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
-  /* ── 浮层模糊 ── */
-  --blur: 8px;
-  /* ── 焦点环 ── */
+  /* ── 形状 ──
+   * 幽暗里根本看不清圆角，修饰是多余的。收到几乎方 —— 与樱的
+   * 10/16/24 是两个极端，这是有意的：这两套在气质上就该站得最远。 */
+  --r1: 3px;
+  --r2: 6px;
+  --r3: 10px;
+
+  /* ── 浮层阴影。※ 卡片不用，只有浮层用 ──
+   * 环境最黑，阴影最重。萤火是「点」，浮层靠比周围更黑沉下去，不靠亮起来。 */
+  --shadow: 0 8px 22px rgba(0, 0, 0, 0.54);
+  --shadow-lg: 0 16px 38px rgba(0, 0, 0, 0.62);
+  /* ── 浮层模糊 ── 幽光是晕开的，比宵透两档。 */
+  --blur: 12px;
+  /* ── 焦点环 ── 同宵。 */
   --ring: 2px;
-  /* ── 字体。只用系统栈，不引网络字体 ── */
+  /* ── 字体。同宵。 ── */
   --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  /* 同宵。 */
   --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  /* ── 字距 ── */
-  --track-tight: 0.01em;
-  --track-wide: 0.16em;
-  /* ── 动效 ── */
-  --t-fast: 120ms;
-  --t-mid: 200ms;
-  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-  /* ── 浮层遮罩 ── */
+  /* ── 字距 ── 六套里最疏：暗处的字要散开才认得出。 */
+  --track-tight: 0.025em;
+  --track-wide: 0.24em;
+  /* ── 动效 ── 飘：慢起慢落，两端都软，像萤火找不准停的地方。 */
+  --t-fast: 180ms;
+  --t-mid: 320ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* ── 浮层遮罩 ── 同宵。 */
   --scrim: rgba(0, 0, 0, 0.46);
-
 }
 
 /* ── 古登堡 · 铸字活版 · 朱砂油墨（彩蛋）───────────────────── */
@@ -353,8 +408,13 @@
   --fg-2: #c1b69e;
   --fg-3: #8a7f68;
 
-  --accent: #c8624f;
-  --accent-weak: rgba(200, 98, 79, 0.15);
+  /* 朱砂。比原来亮一档、偏橙一点：原值落在 --surface-2 上只有 4.14:1，
+   * 而 --accent 在这个项目里是**当正文链接色用**的（base.css 里
+   * `a { color: var(--accent) }`），低于 4.5:1 说不过去。偏橙还顺手把它
+   * 与 --danger 的色距拉开 —— 破坏性操作和链接不能长得像。
+   * 六套里只有这一处配色被这一轮的对比度测试改过，断言见 theme.test.ts。 */
+  --accent: #cc6d48;
+  --accent-weak: rgba(204, 109, 72, 0.15);
   --on-accent: #12100c;
 
   --danger: #d97b6a;
@@ -364,42 +424,50 @@
   --ok: #8aa87a;
   --ok-weak: rgba(138, 168, 122, 0.15);
 
-  --k-notice: #8fb3cf;
-  --k-academic: #8fb894;
-  --k-activity: #cfa85e;
-  --k-life: #c99bab;
-  --k-secondhand: #c9977a;
-  --k-lostfound: #a897c8;
-  --k-job: #82b3ad;
+  --k-todo: #8fb3cf;
+  --k-attend: #cfa85e;
+  --k-know: #c99bab;
+  --k-claim: #a897c8;
+  --k-trade: #c9977a;
+  --k-recruit: #82b3ad;
 
   --fx-glow: rgba(180, 120, 70, 0.1);
   --fx-dot: rgba(210, 180, 130, 0.38);
-  /* ── 形状 ── */
-  --r1: 5px;
-  --r2: 9px;
-  --r3: 13px;
 
-  /* ── 浮层阴影。⚠️ 卡片不用，只有浮层用 ── */
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.48);
-  /* ── 浮层模糊 ── */
-  --blur: 8px;
-  /* ── 焦点环 ── */
+  /* ── 形状 ──
+   * **0**。铅字没有圆角 —— 一块活字是切出来的，不是磨出来的。六套里唯一
+   * 的零圆角，与樱的 10/16/24 是两个极端：方角主题和圆角主题是两种气质，
+   * 而不是同一个主题的两个色号。 */
+  --r1: 0;
+  --r2: 0;
+  --r3: 0;
+
+  /* ── 浮层阴影。※ 卡片不用，只有浮层用 ──
+   * 铅字是**压印**不是投影：零模糊、小偏移的硬边，像纸上压出来的一道黑。
+   * 六套里唯一不用模糊阴影的（其余五套 blur 6–14px，这里是 0）。 */
+  --shadow: 0 2px 0 rgba(0, 0, 0, 0.50);
+  --shadow-lg: 0 4px 0 rgba(0, 0, 0, 0.55);
+  /* ── 浮层模糊 ── 铅印不糊。与雾的 14px 是两个极端。 */
+  --blur: 2px;
+  /* ── 焦点环 ── 同宵。 */
   --ring: 2px;
-  /* ── 字体。只用系统栈，不引网络字体 ── */
-  --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  /* ── 字体 ──
+   * 六套里**唯一换字体**的一套，也是唯一说得通要换的一套：活字印刷就是
+   * 衬线/宋体的血统。中文落到 SimSun（宋体），西文先走 Georgia。 */
+  --sans: Georgia, 'Times New Roman', 'Songti SC', SimSun, 'Noto Serif SC', serif;
+  /* 同宵（等宽六套同值，理由写在宵那块）。 */
   --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  /* ── 字距 ── */
-  --track-tight: 0.01em;
-  --track-wide: 0.16em;
-  /* ── 动效 ── */
-  --t-fast: 120ms;
-  --t-mid: 200ms;
-  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-  /* ── 浮层遮罩 ── */
+  /* ── 字距 ──
+   * 活字之间要垫铅条，所以这套的字距六套里最宽，正文也要松：
+   * --track-tight 在别处是 0.005–0.025em，这里是 0.04em。 */
+  --track-tight: 0.04em;
+  --track-wide: 0.30em;
+  /* ── 动效 ── 失重的活字块：起得慢、停得急 —— 被托起来的东西是这个节奏。 */
+  --t-fast: 190ms;
+  --t-mid: 320ms;
+  --ease: cubic-bezier(0.25, 0.05, 0.2, 1);
+  /* ── 浮层遮罩 ── 同宵。 */
   --scrim: rgba(0, 0, 0, 0.46);
-
 }
 
 /* ── 背景 ───────────────────────────────────────────────────

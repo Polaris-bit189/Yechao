@@ -43,7 +43,7 @@ export function parse(md: string, preview?: string): Block[] {
 
     // 与预览同源的那一段。判据是开头十来个字对得上。
     //
-    // ⚠️ 「是不是块标记」要按 `-# ` 后面**带空格**判，不能只看首字符：
+    // ※ 「是不是块标记」要按 `-# ` 后面**带空格**判，不能只看首字符：
     // `**粗体**` 也以 `*` 开头，但它是一段正文。只看首字符的话，模型把概述
     // 加粗那天这段就跳不过去 —— 页面上同一句话出现两遍，而且不报错。
     if (
@@ -74,9 +74,10 @@ function parseChunk(chunk: string): Block[] {
       continue
     }
 
+    // 标题文本直接用原值 —— 日报的小节标题就是类目标签，不再挂图标字符。
     const h = /^(#{2,3})\s+(.*)$/.exec(line)
     if (h) {
-      out.push({ t: h[1].length === 2 ? 'h2' : 'h3', text: stripLeadMark(h[2]) })
+      out.push({ t: h[1].length === 2 ? 'h2' : 'h3', text: h[2] })
       i++
       continue
     }
@@ -84,7 +85,7 @@ function parseChunk(chunk: string): Block[] {
     // 跳过逻辑之后仍可能遇到一级标题（模板变了）。当二级处理。
     const h1 = /^#\s+(.*)$/.exec(line)
     if (h1) {
-      out.push({ t: 'h2', text: stripLeadMark(h1[1]) })
+      out.push({ t: 'h2', text: h1[1] })
       i++
       continue
     }
@@ -122,19 +123,4 @@ function parseChunk(chunk: string): Block[] {
   }
 
   return out
-}
-
-/**
- * 去掉标题前面的符号字符。
- *
- * 模板偶尔在小节标题上挂个图标字符。这个界面的分节已经由字号与留白
- * 表达，再挂符号是多余的。只剥开头那段，正文不动；剥空了还原原样，
- * 免得留下一个空标题。
- */
-export function stripLeadMark(text: string): string {
-  const cut = text.replace(
-    /^(?:[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{1F1E6}-\u{1F1FF}]+|\s)+/u,
-    '',
-  )
-  return cut.trim() || text
 }

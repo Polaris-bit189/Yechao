@@ -4,15 +4,15 @@ import { shortDateOf } from '../lib/fmt'
 import { kindColor, kindIcon } from '../lib/theme'
 import './KindsPage.css'
 
-/** 每类拉 12 条，按标题去重后留 3 条做预览。 */
+/** 每类先拉 12 条，按标题去重，留下 3 条当预览。 */
 const PULL = 12
 const SHOW = 3
 
 /**
  * 类目 —— 七个入口。
  *
- * 关键在每行下面那三条预览：只给「74 条」回答不了「里面到底是什么」，
- * 而这个页面存在的意义就是回答那个问题。
+ * 要紧的是每行底下那三条预览：光甩一句「74 条」，答不上「里头究竟有什么」，
+ * 而这一页立在这儿，为的就是回答那个问题。
  */
 export function KindsPage() {
   const [cats, setCats] = useState<CategoryDetail[] | null>(null)
@@ -23,8 +23,8 @@ export function KindsPage() {
     getCategories()
       .then(async (r) => {
         setCats(r.categories)
-        // ⚠️ 显式标成 `readonly [string, Item[] | 'fail']` —— 不标的话
-        // TS 会把两条分支推成联合元组，`new Map()` 无从收窄。
+        // ※ 这里显式写成 `readonly [string, Item[] | 'fail']` —— 不写的话
+        // TS 会把两个分支推成联合元组，`new Map()` 就没法收窄。
         const entries: Array<readonly [string, Item[] | 'fail']> = await Promise.all(
           r.categories.map(
             (c): Promise<readonly [string, Item[] | 'fail']> =>
@@ -61,7 +61,7 @@ export function KindsPage() {
         <div className="phead__side">{cats.length} 个类目</div>
       </header>
 
-      <p className="kinds__hint">点一个类目，看该类全部条目</p>
+      <p className="kinds__hint">选一个类目，看它下面的全部条目</p>
 
       <div className="kinds">
         {cats.map((c) => {
@@ -70,7 +70,11 @@ export function KindsPage() {
           const rows = previews.get(c.slug)
 
           return (
-            <section key={c.slug} className="kinds__row" style={{ ['--kc' as string]: color }}>
+            <section
+              key={c.slug}
+              className={c.count === 0 ? 'kinds__row is-empty' : 'kinds__row'}
+              style={{ ['--kc' as string]: color }}
+            >
               <div className="kinds__head">
                 <span className="kinds__icon">
                   <Icon size={14} />
@@ -79,14 +83,14 @@ export function KindsPage() {
                 <span className="kinds__n">{c.count} 条</span>
               </div>
 
-              {/* 三种情况分开：读不到 / 这一类本来就没有 / 有内容。
-                  混成一句会把一次读取失败说成一次空结果。 */}
+              {/* 三种情况各说各的：没读到 / 这类本来就是空 / 有内容。
+                  合成一句话，就等于把一次读取失败讲成了一次空结果。 */}
               {c.count === 0 ? (
-                <p className="kinds__none">这一类还没有条目</p>
+                <p className="kinds__none">这一类目前没有条目</p>
               ) : rows === undefined ? (
-                <p className="kinds__none">读取这一类…</p>
+                <p className="kinds__none">正在读取这一类…</p>
               ) : rows === 'fail' ? (
-                <p className="kinds__none">读不到这一类的条目</p>
+                <p className="kinds__none">这一类的条目没读到</p>
               ) : (
                 <ul className="kinds__peek">
                   {dedupe(rows).map((it) => (
@@ -109,7 +113,7 @@ export function KindsPage() {
   )
 }
 
-/** 标题相同的只留第一条 —— 同一件事被转发几次，预览里连排三行一样没有意义。 */
+/** 标题一样的只留头一条 —— 同一件事被转了几遍，预览里并排三行重复的没有意义。 */
 function dedupe(rows: Item[]): Item[] {
   const seen = new Set<string>()
   const out: Item[] = []

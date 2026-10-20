@@ -1,18 +1,18 @@
 /**
  * 时间工具的测试。
  *
- * 重点在 `dueInfo` —— 它和后端 `yechao/domain/days.py` 的 `deadline_level`
- * 是**同一套边界的两份实现**：日报正文由后端渲染时要用，日历要跟着「此刻」变，
- * 所以两边各有一份。
+ * 主要盯 `dueInfo` —— 它和后端 `yechao/domain/days.py` 的 `deadline_level`
+ * 是**同一套边界、两份实现**：日报正文由后端渲染，要用那一份；日历得跟着「此刻」
+ * 走，用这一份。
  *
- * 两份实现的风险只有一个：**漂移**。而漂移的症状是「日历上标红了、日报里却
- * 没提」——单看任何一边都正常。所以边界值在这里逐条钉住。
+ * 两份实现只有一种坏法：**漂移**。真漂了，症状是「日历上标了红、日报里却一句没提」
+ * —— 单看哪一份都挑不出毛病。所以边界值在这里一条一条钉死。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ago, dueInfo, groupLabel, hmText, mdText, midnight, weekdayOf, ymd } from './time'
 
-/** 用本地时间构造，避免用例随机器时区漂移。 */
+/** 用本地时间构造，免得用例跟着机器时区漂。 */
 const at = (y: number, m: number, d: number, h = 0, min = 0): number =>
   Math.floor(new Date(y, m - 1, d, h, min).getTime() / 1000)
 
@@ -58,8 +58,8 @@ describe('weekdayOf', () => {
 })
 
 describe('groupLabel', () => {
-  // `groupLabel` 内部读**当前时间**，所以这里必须冻结时钟——
-  // 否则用例会随运行日期漂移，今天绿、明天红。
+  // `groupLabel` 会去读**当前时间**，所以这里得把时钟冻住 ——
+  // 不然用例跟着运行日期跑，今天过、明天挂。
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 8, 16, 10))
@@ -78,14 +78,14 @@ describe('groupLabel', () => {
     expect(groupLabel('2026-09-10')).toBe('9 月 10 日')
   })
 
-  it('⚠️ 按日期差判，不按秒差', () => {
-    // 23:59 与次日 00:01 只差两分钟，但它们是两天。
+  it('※ 比的是日期差，不是秒差', () => {
+    // 23:59 和第二天 00:01 只隔两分钟，却算两天。
     expect(groupLabel('2026-09-14')).not.toBe('今天')
     expect(groupLabel('2026-09-14')).not.toBe('昨天')
   })
 })
 
-describe('dueInfo —— 与后端共用的边界', () => {
+describe('dueInfo —— 与后端对齐的那套边界', () => {
   it('过期', () => {
     expect(dueInfo(at(2026, 9, 15), NOW * 1000)).toEqual({
       level: 'expired',
@@ -93,27 +93,27 @@ describe('dueInfo —— 与后端共用的边界', () => {
     })
   })
 
-  it('⭐ 边界：0 天与 1 天都是 urgent', () => {
+  it('* 边界：0 天与 1 天都是 urgent', () => {
     expect(dueInfo(at(2026, 9, 16), NOW * 1000).level).toBe('urgent')
     expect(dueInfo(at(2026, 9, 17), NOW * 1000).level).toBe('urgent')
   })
 
-  it('⭐ 边界：2 天起离开 urgent', () => {
+  it('* 边界：2 天起离开 urgent', () => {
     expect(dueInfo(at(2026, 9, 18), NOW * 1000).level).toBe('soon')
   })
 
-  it('⭐ 边界：3 天仍是 soon，4 天进入 normal', () => {
+  it('* 边界：3 天仍是 soon，4 天进入 normal', () => {
     expect(dueInfo(at(2026, 9, 19), NOW * 1000).level).toBe('soon')
     expect(dueInfo(at(2026, 9, 20), NOW * 1000).level).toBe('normal')
   })
 
-  it('⭐ 边界：7 天仍是「还有 N 天」，8 天起回落绝对日期', () => {
+  it('* 边界：7 天仍是「还有 N 天」，8 天起回落绝对日期', () => {
     expect(dueInfo(at(2026, 9, 23), NOW * 1000).text).toBe('还有 7 天')
     expect(dueInfo(at(2026, 9, 24), NOW * 1000).text).toBe('9 月 24 日')
   })
 
-  it('⚠️ 按本地日对齐，不按秒差', () => {
-    // 今天 10:00 看明天 09:00：只差 23 小时，但它是「明天」。
+  it('※ 按本地日对齐，不按秒差', () => {
+    // 今天 10:00 看明天 09:00：隔了 23 小时，可它就是「明天」。
     expect(dueInfo(at(2026, 9, 17, 9), NOW * 1000).text).toBe('明天截止')
   })
 })

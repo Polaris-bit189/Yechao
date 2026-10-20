@@ -9,13 +9,13 @@ import './MonthPage.css'
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
 
 /**
- * 日历 —— 按截止日排。
+ * 日历 —— 按截止日排列。
  *
- * 三件事各说各的，不能合并：
- *   · 活动撞车：同一天两个活动，要去哪个得选
- *   · 课表读不出来：不代表没有课冲突
- *   · 这一天没有条目：真的没有
- * 它们要用户做的事完全不同，所以三句话三个位置。
+ * 三件事各说各的，不并成一句：
+ *   · 活动撞车：一天里两个活动，去哪个得自己挑
+ *   · 课表没读出来：不等于就没有课冲突
+ *   · 这天没有条目：那是真没有
+ * 它们要用户采取的行动互不相干，所以分成三处、三种说法。
  */
 export function MonthPage() {
   const [data, setData] = useState<CalendarPage | null>(null)
@@ -29,7 +29,7 @@ export function MonthPage() {
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : '读取失败'))
   }, [])
 
-  /** 截止日 → 当天的条目。没有核验过的截止日不进日历格。 */
+  /** 截止日 → 当天条目。没经过核验的截止日，不往日历格里放。 */
   const byDay = useMemo(() => {
     const m = new Map<string, Item[]>()
     for (const it of data?.items ?? []) {
@@ -43,7 +43,7 @@ export function MonthPage() {
     return m
   }, [data])
 
-  /** 被折叠的条目 → 代表它的那条。折叠的仍在 items 里，只是收起来。 */
+  /** 被折叠的条目 → 替它露面的那条。折叠的条目依旧在 items 里，只是被收了起来。 */
   const folded = useMemo(() => {
     const m = new Map<number, number>()
     for (const [child, rep] of Object.entries(data?.duplicates ?? {})) {
@@ -59,6 +59,23 @@ export function MonthPage() {
     for (const it of data?.items ?? []) m.set(it.item_id, it.title)
     return m
   }, [data])
+
+  /**
+   * 当月里**带截止日**的那些天，日期从早到晚。
+   *
+   * 只摆有事的几天 —— 30 天全列出来，这一栏就跟第二份日历没两样，
+   * 「哪几天有事」反倒看不出来了。
+   *
+   * ※ 这个 hook 得待在上面那句 `if (err) return` 前头：挪到后面就变成
+   * 有条件的 hook 调用，React 会在「出错」和「没出错」两次渲染之间抛
+   * 「Rendered more hooks than during the previous render」。
+   */
+  const monthDays = useMemo(() => {
+    const head = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
+    return [...byDay.entries()]
+      .filter(([k]) => k.startsWith(head))
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+  }, [byDay, month])
 
   if (err) {
     return (
@@ -86,6 +103,12 @@ export function MonthPage() {
     }
   }
 
+  /** 点右侧清单里的一天：选中，并把日历翻到它所在的月份。 */
+  function jump(key: string) {
+    setPicked(key)
+    setMonth(firstOfMonth(new Date(midnight(key) * 1000)))
+  }
+
   return (
     <div className="wrap">
       <header className="phead">
@@ -99,91 +122,134 @@ export function MonthPage() {
       <Clashes list={data.conflicts} />
       <CourseState rows={data.course_conflicts} />
 
-      <div className="monthbar">
-        <button type="button" className="monthbar__nav" aria-label="上个月" onClick={() => shift(-1)}>
-          ‹
-        </button>
-        <h2 className="monthbar__title">
-          {month.getFullYear()}年{month.getMonth() + 1}月
-        </h2>
-        <button type="button" className="monthbar__nav" aria-label="下个月" onClick={() => shift(1)}>
-          ›
-        </button>
-      </div>
-
-      <div className="grid">
-        {WEEKDAYS.map((w) => (
-          <div key={w} className="grid__wd">
-            {w}
-          </div>
-        ))}
-        {cells.map((c, i) => {
-          const has = c.key ? byDay.has(c.key) : false
-          // 已过期的日子，点画淡 —— 不是隐藏，只是别再引人注意。
-          const past = c.key ? c.key < now : false
-          return (
-            <button
-              key={i}
-              type="button"
-              disabled={!c.key}
-              className={[
-                'grid__cell',
-                c.key === picked ? 'is-picked' : '',
-                c.key === now ? 'is-today' : '',
-                past ? 'is-past' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => c.key && setPicked(c.key)}
-            >
-              <span className="grid__num">{c.day || ''}</span>
-              {has && <span className="grid__dot" />}
+      {/* 日历和「当月清单」并排摆。
+          日历管的是「哪几天有事」，清单管的是「到底是什么事」——
+          放在同一屏，用户就不必一格一格点开去找。 */}
+      <div className="monthwrap">
+        <div className="monthwrap__cal">
+          <div className="monthbar">
+            <button type="button" className="monthbar__nav" aria-label="上个月" onClick={() => shift(-1)}>
+              ‹
             </button>
-          )
-        })}
-      </div>
-
-      <section className="due">
-        <h2 className="seclabel">{picked} 到期</h2>
-
-        {todays.length === 0 ? (
-          <div className="due__empty">
-            <p>这一天没有到期的条目。最近的几天：</p>
-            <Nearby
-              byDay={byDay}
-              from={picked > now ? picked : now}
-              onJump={(k) => {
-                setPicked(k)
-                setMonth(firstOfMonth(new Date(midnight(k) * 1000)))
-              }}
-            />
+            <h2 className="monthbar__title">
+              {month.getFullYear()}年{month.getMonth() + 1}月
+            </h2>
+            <button type="button" className="monthbar__nav" aria-label="下个月" onClick={() => shift(1)}>
+              ›
+            </button>
           </div>
-        ) : (
-          <ul className="due__list">
-            {todays.map((it) => {
-              const rep = folded.get(it.item_id)
+
+          <div className="grid">
+            {WEEKDAYS.map((w) => (
+              <div key={w} className="grid__wd">
+                {w}
+              </div>
+            ))}
+            {cells.map((c, i) => {
+              // 不属于本月的格子渲染成 `div`，而不是 disabled 的 button：
+              // 按钮一旦 disabled 会多一层 opacity，在深色底上比留白还扎眼，
+              // 活像一只「空盒子」。这里要的效果是它彻底不见。
+              if (c.key === null) return <div key={i} className="grid__cell is-void" />
+              // 先收进 const：`c.key` 是会变的属性，窄化传不进下面那个闭包。
+              const key = c.key
+              const has = byDay.has(key)
+              // 已经过去的日子，点画得淡一些 —— 不是藏起来，只是别再抢注意力。
+              const past = key < now
               return (
-                <li key={it.item_id} className="due__row">
-                  <span className="due__bar" style={{ background: kindColor(it.kind) }} />
-                  <span className="due__name">{it.title}</span>
-                  {rep !== undefined && (
-                    <span className="due__note">
-                      与「{titleOf.get(rep) ?? `条目 ${rep}`}」是同一件事
-                    </span>
-                  )}
-                </li>
+                <button
+                  key={i}
+                  type="button"
+                  className={[
+                    'grid__cell',
+                    key === picked ? 'is-picked' : '',
+                    key === now ? 'is-today' : '',
+                    past ? 'is-past' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => setPicked(key)}
+                >
+                  <span className="grid__num">{c.day}</span>
+                  {has && <span className="grid__dot" />}
+                </button>
               )
             })}
-          </ul>
-        )}
-      </section>
+          </div>
+        </div>
+
+        <section className="monthwrap__day due">
+          <h2 className="seclabel">{picked} 到期</h2>
+
+          {todays.length === 0 ? (
+            <div className="due__empty">
+              <p>这天没有要到期的东西。换一个近些的日期看看：</p>
+              <Nearby byDay={byDay} from={picked > now ? picked : now} onJump={jump} />
+            </div>
+          ) : (
+            <ul className="due__list">
+              {todays.map((it) => {
+                const rep = folded.get(it.item_id)
+                return (
+                  <li key={it.item_id} className="due__row">
+                    <span className="due__bar" style={{ background: kindColor(it.kind) }} />
+                    <span className="due__name">{it.title}</span>
+                    {rep !== undefined && (
+                      <span className="due__note">
+                        与「{titleOf.get(rep) ?? `条目 ${rep}`}」是同一件事
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+
+        <aside className="monthwrap__side">
+          <h2 className="seclabel">本月有事项的日子</h2>
+
+          {monthDays.length === 0 ? (
+            <p className="mside__none">本月没有条目挂着截止日。</p>
+          ) : (
+            <ul className="mside">
+              {monthDays.map(([k, rows]) => (
+                <li key={k}>
+                  <button
+                    type="button"
+                    className={k === picked ? 'mside__row is-on' : 'mside__row'}
+                    onClick={() => jump(k)}
+                  >
+                    <span className="mside__d">{k}</span>
+                    <span className="mside__wd">{weekdayShort(k)}</span>
+                    <span className="mside__n">{rows.length} 条</span>
+                  </button>
+                  <ul className="mside__items">
+                    {rows.map((it) => (
+                      <li key={it.item_id}>
+                        <span className="mside__bar" style={{ background: kindColor(it.kind) }} />
+                        <span className="mside__t">{it.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+      </div>
     </div>
   )
 }
 
+/** `周一`。清单里挨着日期的那一个字，够用了。 */
+function weekdayShort(key: string): string {
+  const d = new Date(midnight(key) * 1000)
+  return `周${WEEKDAYS[(d.getDay() + 6) % 7]}`
+}
+
 /**
- * 撞车。只给开始时刻，不给「重叠了多少分钟」——
- * 后者按「活动通常持续 90 分钟」推的，不是从消息里读到的。
+ * 撞车。只报开始时刻，不报「重叠了多少分钟」——
+ * 后者是拿「活动一般持续 90 分钟」估的，并非消息里读到的。
  */
 function Clashes({ list }: { list: Conflict[] }) {
   const [open, setOpen] = useState(false)
@@ -195,7 +261,7 @@ function Clashes({ list }: { list: Conflict[] }) {
     <section className="clash">
       <div className="clash__top">
         <IcWarn />
-        <span>{list.length} 个活动时间撞车（要选一个去）</span>
+        <span>{list.length} 个活动撞了时间（得挑一个去）</span>
         <button type="button" className="clash__toggle" onClick={() => setOpen((v) => !v)}>
           {open ? '收起' : '展开'}
         </button>
@@ -219,12 +285,12 @@ function Clashes({ list }: { list: Conflict[] }) {
 /**
  * 课表状态。
  *
- * 读不出来时后端给的是 `[{error}]` 而不是空数组 —— 因为这两件事在界面上
- * 必须能分辨。所以这里也分成两块，而且文案上明写「不代表没有冲突」。
+ * 没读出来时，后端给的是 `[{error}]` 而非空数组 —— 因为这两种情况在界面上
+ * 必须分得清。所以这里也拆成两块，措辞上挑明「不代表没有冲突」。
  */
 function CourseState({ rows }: { rows: CalendarPage['course_conflicts'] }) {
   if (rows.length === 0) {
-    return <p className="course course--ok">课表已读，没有课冲突。</p>
+    return <p className="course course--ok">课表读到了，没有课冲突。</p>
   }
 
   const head = rows[0]
@@ -234,7 +300,7 @@ function CourseState({ rows }: { rows: CalendarPage['course_conflicts'] }) {
         <IcWarn />
         <div>
           <p>{head.error}</p>
-          <p className="course__sub">这不等于没有课冲突 —— 课表本身没有被读到。</p>
+          <p className="course__sub">这并不等于没有课冲突 —— 课表本身就没读出来。</p>
         </div>
       </div>
     )
@@ -260,7 +326,7 @@ function CourseState({ rows }: { rows: CalendarPage['course_conflicts'] }) {
   )
 }
 
-/** 最近有事项的四天。按日期去重，不按条数 —— 同一天的几条不是四天。 */
+/** 往后最近有事项的四天。按日期去重，不看条数 —— 同一天的几条凑不成四天。 */
 function Nearby({
   byDay,
   from,
@@ -271,7 +337,7 @@ function Nearby({
   onJump: (k: string) => void
 }) {
   const keys = [...byDay.keys()].filter((k) => k > from).sort()
-  if (keys.length === 0) return <p className="due__tail">这天之后没有带截止日的条目。</p>
+  if (keys.length === 0) return <p className="due__tail">这天往后没有条目带截止日。</p>
 
   return (
     <ul className="near">
@@ -296,9 +362,9 @@ function firstOfMonth(d: Date): Date {
 }
 
 /**
- * 一个月占的格子。周一开头，前后不属于本月的格子留空。
+ * 一个月铺开的格子。周一起头，首尾不属于本月的格子空着。
  *
- * 不借上/下月的日期 —— 点一个「上个月的 28 号」会跳到看不见的地方。
+ * 不去借上/下月的日期 —— 点一下「上月的 28 号」，会跳到看不见的地方去。
  */
 function buildCells(cursor: Date): Array<{ key: string | null; day: number }> {
   const y = cursor.getFullYear()

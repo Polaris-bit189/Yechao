@@ -99,11 +99,11 @@ function Groups({ onChanged }: { onChanged: () => void }) {
   /**
    * 每个群**抽出了多少条**。
    *
-   * ⚠️ 规格明确要这一栏：`326 条` 是「这个群在库里有多少消息」，
+   * ※ 规格明确要这一栏：`326 条` 是「这个群在库里有多少消息」，
    * `抽出 105 条` 才是「这个群值不值得留」的依据 —— 一个全是闲聊的群
    * 消息再多也抽不出东西。两个数放在一起才有意义。
    *
-   * ⚠️ 拉不到时**不放 0**：0 与「没抽过」在界面上长得一样，
+   * ※ 拉不到时**不放 0**：0 与「没抽过」在界面上长得一样，
    * 而它们的意思差得很远。
    */
   const [extracted, setExtracted] = useState<Record<number, number | 'fail'>>({})
@@ -146,8 +146,8 @@ function Groups({ onChanged }: { onChanged: () => void }) {
       return
     }
     if (!gname.trim()) {
-      // 这一页没有改名入口，空名群加进来就只能去改文件。
-      setMsg('群名不能空着 —— 这一页没有改名入口，空名群只能手改配置才改得回来。')
+      // 这一页只负责加群，没有改名的地方 —— 名字填错了只能去动配置文件。
+      setMsg('群名不能留空：加进来之后这一页改不了它，只能去改配置文件。')
       return
     }
     await act('join', () => newGroup(id, gname.trim(), 'normal'), `已加入监视：${gname.trim()}`)
@@ -246,7 +246,7 @@ function GroupLine({
       <span className="rows__dim">{g.messages} 条</span>
       {/* 0 不是 1970 年，是「没有记录」。 */}
       <span className="rows__dim">最近 {g.last_ts > 0 ? shortDateOf(g.last_ts) : '—'}</span>
-      {/* ⚠️ 「抽出多少条」与「库里有多少条」是两件事。
+      {/* ※ 「抽出多少条」与「库里有多少条」是两件事。
           拉不到时说「抽出 —」，不说 0 —— 0 会被读成「一条都没抽出来」。 */}
       <span className="rows__dim">
         抽出 {extracted === undefined ? '…' : extracted === 'fail' ? '—' : `${extracted} 条`}
@@ -296,11 +296,11 @@ function People({ onChanged }: { onChanged: () => void }) {
   async function add() {
     const n = Number(uin.trim())
     if (!Number.isInteger(n) || n <= 0) {
-      setMsg('QQ 号必须是正整数（0 不是有效账号）')
+      setMsg('QQ 号只能是正整数，0 不构成一个账号')
       return
     }
     if (!label.trim()) {
-      setMsg('给它起个名字 —— 群昵称会变，这个名字不会。')
+      setMsg('填一个名字 —— 群自己的昵称会改，你填的这个不会。')
       return
     }
     try {
@@ -340,13 +340,13 @@ function People({ onChanged }: { onChanged: () => void }) {
       ) : (
         <ul className="rows">
           {list.map((p) => (
-            <li key={p.uin} className="rows__line">
+            <li key={p.account} className="rows__line">
               <span className="rows__name">{p.label}</span>
-              <span className="rows__dim">{p.uin}</span>
+              <span className="rows__dim">{p.account}</span>
               <span className="rows__dim">{p.count} 条</span>
               <span className="rows__note">{p.note}</span>
               <span className="rows__acts">
-                <button type="button" className="is-danger" onClick={() => void remove(p.uin)}>
+                <button type="button" className="is-danger" onClick={() => void remove(p.account)}>
                   移除
                 </button>
               </span>
@@ -475,11 +475,11 @@ function Llm({ onChanged }: { onChanged: () => void }) {
 /**
  * 类目编辑器。
  *
- * ⚠️ `desc` 是**判据**，会逐字进提示词。所以它不是「备注」，
+ * ※ `desc` 是**判据**，会逐字进提示词。所以它不是「备注」，
  * 是「告诉模型这一类该怎么办」—— 编辑器里要写清楚这一点，
  * 否则用户会在这里写一句给自己看的说明。
  *
- * ⚠️ 改名走**别名**：旧 slug 的条目不改 `item_id`，只是显示时按新名字。
+ * ※ 改名走**别名**：旧 slug 的条目不改 `item_id`，只是显示时按新名字。
  * 所以改完要刷新，并且在页面上列出「改过名的」。
  */
 function Categories({ onChanged }: { onChanged: () => void }) {
@@ -488,9 +488,9 @@ function Categories({ onChanged }: { onChanged: () => void }) {
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
-  const [draft, setDraft] = useState({ slug: '', label: '', desc: '', icon: '' })
+  const [draft, setDraft] = useState({ slug: '', label: '', desc: '' })
   const [adding, setAdding] = useState(false)
-  const [newCat, setNewCat] = useState({ slug: '', label: '', desc: '', icon: '' })
+  const [newCat, setNewCat] = useState({ slug: '', label: '', desc: '' })
   const [deleting, setDeleting] = useState<CategoryDetail | null>(null)
   const [migrateTo, setMigrateTo] = useState('')
 
@@ -591,7 +591,7 @@ function Categories({ onChanged }: { onChanged: () => void }) {
                     type="button"
                     onClick={() => {
                       setEditing(c.slug)
-                      setDraft({ slug: c.slug, label: c.label, desc: c.desc, icon: c.icon })
+                      setDraft({ slug: c.slug, label: c.label, desc: c.desc })
                     }}
                   >
                     编辑
@@ -624,11 +624,11 @@ function Categories({ onChanged }: { onChanged: () => void }) {
           <strong>删除「{deleting.label}」</strong>
           {deleting.count > 0 ? (
             <p>
-              它下面还有 {deleting.count} 条条目。删之前必须选一个迁移目标 ——
-              否则那些条目会指向一个不存在的类目。
+              还有 {deleting.count} 条条目挂在这个类目上。删之前得先选一个去处 ——
+              不然那些条目的类目会变成一个查不到的 slug。
             </p>
           ) : (
-            <p>它下面没有任何条目，可以直接删除。</p>
+            <p>没有条目挂在它下面，可以直接删。</p>
           )}
 
           {deleting.count > 0 && (
@@ -702,11 +702,11 @@ function Categories({ onChanged }: { onChanged: () => void }) {
               disabled={busy}
               onClick={() =>
                 void run(
-                  () => newCategory(newCat.slug, newCat.label, newCat.desc, newCat.icon),
+                  () => newCategory(newCat.slug, newCat.label, newCat.desc),
                   `已新增「${newCat.label}」`,
                 ).then(() => {
                   setAdding(false)
-                  setNewCat({ slug: '', label: '', desc: '', icon: '' })
+                  setNewCat({ slug: '', label: '', desc: '' })
                 })
               }
             >
@@ -728,8 +728,8 @@ function Categories({ onChanged }: { onChanged: () => void }) {
             onClick={() =>
               void run(async () => {
                 const r = await stepBackCategory()
-                if (!r.undone) throw new Error('没有可撤销的类目改动（撤销栈是空的）')
-              }, '已撤销——类目表与改名映射都回到上一次改动之前')
+                if (!r.undone) throw new Error('撤销栈是空的，没有可回退的类目改动')
+              }, '撤销完成 —— 类目和改名映射都退回到改动前的状态')
             }
           >
             撤销类目改动
@@ -745,11 +745,11 @@ function Categories({ onChanged }: { onChanged: () => void }) {
 /**
  * 用当前类目判据重判存量条目。
  *
- * ⚠️ 一次只允许一个重排在跑 —— 并发两个会让事件顺序失去意义，
+ * ※ 一次只允许一个重排在跑 —— 并发两个会让事件顺序失去意义，
  * 而撤销回来可能覆盖前一个的结果。
  *
- * ⚠️ 取消是**协作式**的：请求已受理，正在飞的那一批会跑完，
- * 真正停下要看轮询到的状态。
+ * ※ 取消是**协作式**的：这个请求只是把意图记下来，手上那批照跑，
+ * 真正停没停要看下一次轮询回来的状态。
  */
 function Reorder({ onChanged }: { onChanged: () => void }) {
   const [job, setJob] = useState<JobRow | null>(null)
@@ -789,8 +789,8 @@ function Reorder({ onChanged }: { onChanged: () => void }) {
       const r = await stopJob(job.job_id)
       setMsg(
         r.cancelled
-          ? '已请求取消——正在飞的那一批会跑完，它停在下一批'
-          : '它已经结束了，这一步没赶上（取消只对正在跑的任务有意义）',
+          ? '已记下取消请求：手上那批会跑完，从下一批起不再开新的'
+          : '任务已经跑完了，这次没赶上（取消只对还在跑的作业有效）',
       )
     } catch (e) {
       setMsg(e instanceof Error ? e.message : '取消失败')
@@ -804,7 +804,7 @@ function Reorder({ onChanged }: { onChanged: () => void }) {
       setMsg(
         r.undone
           ? `已撤销这一批：${r.count} 条回到重排前的类目`
-          : '这一批没有可撤销的改动（可能已经撤过了）',
+          : '这一批没什么可撤的 —— 可能之前已经撤过了',
       )
       onChanged()
     } catch (e) {
@@ -822,7 +822,7 @@ function Reorder({ onChanged }: { onChanged: () => void }) {
       </p>
 
       <p className="hint">
-        ⚠️ 手改过类目的条目**不会被覆盖**。
+        ※ 手改过类目的条目**不会被覆盖**。
       </p>
 
       <div className="acts">
@@ -854,8 +854,8 @@ function Reorder({ onChanged }: { onChanged: () => void }) {
                     : '已取消'}
             </span>
             <span className="rows__dim">
-              {/* ⚠️ `done` 是「最后一条成功批次的序号」，不是已完成批次数。
-                  照实显示，不 +1。 */}
+              {/* ※ `done` 是「最后一批跑成功的批号」，不是已经成功了几批。
+                  原值显示，不要 +1。 */}
               {job.total > 0 ? `${job.done}/${job.total}` : '等待第一批进度…'}
             </span>
           </div>

@@ -7,9 +7,9 @@
 
 export interface Item {
   item_id: number
+  /** 类目 slug。判据是「这条消息**要读者做什么**」—— 见后端 categories.py。 */
   kind: string
   kind_label: string
-  kind_icon: string
   title: string
   detail: string | null
   event_ts: number
@@ -17,7 +17,8 @@ export interface Item {
   group_id: number
   group_name: string
   actor: string | null
-  actor_uin: number | null
+  /** 账号（源系统里的标识）。匿名条目为 null。 */
+  actor_account: number | null
   place: string | null
   amount: string | null
   links: string[]
@@ -75,7 +76,7 @@ export interface UrgentPage {
 export interface CategoryDetail {
   slug: string
   label: string
-  icon: string
+  /** 判据，逐字进提示词。 */
   desc: string
   count: number
 }
@@ -101,7 +102,8 @@ export interface DigestDetail extends DigestSummary {
 }
 
 export interface Person {
-  uin: number
+  /** 账号（源系统里的标识）。后端叫 `account`，不叫某个平台的原生词。 */
+  account: number
   label: string
   note: string
   count: number
@@ -270,7 +272,7 @@ export function getItems(q: ItemQuery): Promise<ItemPage> {
 export const getItem = (id: number) => get<ItemDetail>(`/api/items/${id}`)
 
 export const patchKind = (id: number, kind: string) =>
-  send<{ edit_id: number }>(`/api/items/${id}/kind`, 'POST', { kind })
+  send<{ edit_id: number }>(`/api/items/${id}`, 'PATCH', { kind })
 
 export const dropItem = (id: number) => send<{ edit_id: number }>(`/api/items/${id}`, 'DELETE')
 
@@ -278,13 +280,13 @@ export const stepBack = (editId?: number) =>
   send<{ undone: boolean }>('/api/undo', 'POST', { edit_id: editId ?? null })
 
 export const bulkPatchKind = (ids: number[], kind: string) =>
-  send<{ actor: string; count: number }>('/api/items/kinds', 'POST', {
+  send<{ actor: string; count: number }>('/api/items/batch-kind', 'POST', {
     item_ids: ids,
     kind,
   })
 
 export const bulkStepBack = (actor: string) =>
-  send<{ undone: boolean; count: number }>('/api/bulk-undo', 'POST', { actor })
+  send<{ undone: boolean; count: number }>('/api/undo/batch', 'POST', { actor })
 
 export function getCalendar(range?: { since?: string; until?: string }): Promise<CalendarPage> {
   const sp = new URLSearchParams()
@@ -298,14 +300,14 @@ export const getUrgent = () => get<UrgentPage>('/api/urgent')
 
 export const getCategories = () => get<CategoriesResponse>('/api/categories')
 
-export const newCategory = (slug: string, label: string, desc: string, icon: string) =>
-  send<{ slug: string }>('/api/categories', 'POST', { slug, label, desc, icon })
+export const newCategory = (slug: string, label: string, desc: string) =>
+  send<{ slug: string }>('/api/categories', 'POST', { slug, label, desc })
 
 // slug 在路径里，要转义。同一组的 dropCategory 也必须同样处理 ——
 // 一处编码一处不编码，照着哪一处写都说得通。
 export const patchCategory = (
   slug: string,
-  patch: { slug?: string; label?: string; desc?: string; icon?: string },
+  patch: { slug?: string; label?: string; desc?: string },
 ) => send<{ slug: string }>(`/api/categories/${encodeURIComponent(slug)}`, 'PUT', patch)
 
 export const dropCategory = (slug: string, migrateTo?: string) => {
@@ -322,10 +324,15 @@ export const getDigest = (id: number) => get<DigestDetail>(`/api/digests/${id}`)
 
 export const getPersons = () => get<{ persons: Person[] }>('/api/persons')
 
-export const newPerson = (uin: number, label: string, note = '') =>
-  send<{ uin: number; label: string }>('/api/persons', 'POST', { uin, label, note })
+export const newPerson = (account: number, label: string, note = '') =>
+  send<{ account: number; label: string }>('/api/persons', 'POST', {
+    account,
+    label,
+    note,
+  })
 
-export const dropPerson = (uin: number) => send<void>(`/api/persons/${uin}`, 'DELETE')
+export const dropPerson = (account: number) =>
+  send<void>(`/api/persons/${account}`, 'DELETE')
 
 export const getGroups = () => get<GroupsResponse>('/api/groups')
 
@@ -343,7 +350,7 @@ export const getLlm = () => get<LlmSettings>('/api/llm')
 
 export const putLlm = (s: LlmSettings) => send<LlmSettings>('/api/llm', 'PUT', s)
 
-export const startReorder = () => send<JobRow>('/api/reorder', 'POST')
+export const startReorder = () => send<JobRow>('/api/jobs', 'POST')
 
 export const getJob = (id: string) => get<JobRow>(`/api/jobs/${id}`)
 
@@ -354,10 +361,10 @@ export const stopJob = (id: string) =>
 export const undoJob = (id: string) =>
   send<{ undone: boolean; count: number }>(`/api/jobs/${id}/undo`, 'POST')
 
-export const getPack = () => get<{ toml: string }>('/api/config/pack')
+export const getPack = () => get<{ toml: string }>('/api/config/export')
 
 export const putPack = (toml: string, apply: boolean, keepSettings: boolean) =>
-  send<Record<string, unknown>>('/api/config/pack', 'POST', {
+  send<Record<string, unknown>>('/api/config/import', 'POST', {
     toml,
     apply,
     keep_settings: keepSettings,
