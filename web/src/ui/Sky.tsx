@@ -127,14 +127,91 @@ function dotsFor(theme: ThemeId): Dot[] {
   }
 }
 
+/**
+ * 远山。
+ *
+ * ※ 为什么用 SVG 元素而不是 CSS 的 `background-image: url("data:...")`：
+ *   data-URI 里的颜色**没法跟随 CSS 变量** —— 那样六套主题就得写六份山。
+ *   SVG 元素的 `fill: currentColor` 让颜色由 CSS 的 `color` 决定，
+ *   一份路径数据、六种山色。
+ *
+ * ※ `preserveAspectRatio="none"` 是刻意的：山脊的起伏是相对的，被拉宽一点
+ *   不影响观感，但**必须**铺满 —— 露出一条边会像贴纸。
+ *
+ * 每套两层（`-b` 远、`-a` 近），用透明度做空气透视。这是水墨里
+ * 「远山如黛」的画法，也是让背景**长出纵深**的关键：原来六套主题都只有
+ * 一层渐变 + 粒子，等于只有近景，所以看着平。
+ */
+const RIDGE = {
+  /** 连绵起伏 —— 宵、樱。 */
+  rolling: {
+    back: 'M0 262 C 150 214 250 246 372 222 S 574 178 716 212 S 918 254 1062 216 S 1286 182 1440 226 L1440 420 L0 420 Z',
+    front:
+      'M0 312 C 168 278 268 302 412 282 S 636 248 780 280 S 984 312 1128 288 S 1348 262 1440 292 L1440 420 L0 420 Z',
+  },
+  /** 尖峰 —— 雾、月。比 rolling 陡，山形更硬。 */
+  peaks: {
+    back: 'M0 286 L 186 196 L 306 254 L 468 156 L 628 244 L 790 184 L 968 262 L 1128 204 L 1306 268 L1440 224 L1440 420 L0 420 Z',
+    front:
+      'M0 334 L 204 268 L 344 308 L 506 238 L 686 302 L 846 252 L 1024 316 L 1184 272 L 1362 322 L1440 296 L1440 420 L0 420 Z',
+  },
+  /** 平缓地平线 —— 幽。那里是水面，不该有山。 */
+  flat: {
+    back: 'M0 330 C 240 312 420 326 720 318 S 1200 306 1440 320 L1440 420 L0 420 Z',
+    front:
+      'M0 366 C 260 352 480 362 760 356 S 1220 348 1440 358 L1440 420 L0 420 Z',
+  },
+} as const
+
+type RidgeKind = keyof typeof RIDGE
+
+/** 主题 → 画哪套山。古登堡返回 null：它已经有走纸格线那一层了。 */
+function sceneOf(theme: ThemeId): RidgeKind | null {
+  switch (theme) {
+    case 'yoi':
+    case 'sakura':
+      return 'rolling'
+    case 'kiri':
+    case 'tsuki':
+      return 'peaks'
+    case 'yuu':
+      return 'flat'
+    default:
+      return null
+  }
+}
+
+function Scene({ theme }: { theme: ThemeId }) {
+  const kind = sceneOf(theme)
+  if (!kind) return null
+  const r = RIDGE[kind]
+  return (
+    <svg
+      className="sky__far"
+      viewBox="0 0 1440 420"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <path className="sky__far-b" d={r.back} />
+      <path className="sky__far-a" d={r.front} />
+    </svg>
+  )
+}
+
 export function Sky({ theme }: { theme: ThemeId }) {
   const dots = dotsFor(theme)
 
   return (
     <div className="sky" aria-hidden="true">
+      <Scene theme={theme} />
+
       {dots.map((d, i) => (
         <span key={`${theme}-${i}`} className="sky__dot" style={d.style} />
       ))}
+
+      {/* 宣纸颗粒 + 暗角。放在最后 = 压在最上层，六套主题共用，
+          所以它不参与「每套主题各不相同」那件事。 */}
+      <div className="sky__grain" />
     </div>
   )
 }

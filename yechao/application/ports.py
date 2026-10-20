@@ -281,7 +281,22 @@ class JobRepository(Protocol):
         正是这次错位的来源。
     """
 
-    def create_job(self, kind: str, total: int, *, actor: str = "") -> str: ...
+    def create_job(
+        self, kind: str, total: int, *, actor: str = "", ts: int = 0
+    ) -> str: ...
+
+    def reclaim_stale(self, *, now: int, older_than: int) -> int:
+        """把**显然已经死掉**的 `running` 作业收尾，返回收了几条。
+
+        ※ 为什么需要：`state` 只在 `run_batches` **活着**的时候被写，而
+        取消只置旗标。进程被 kill / OOM / 断电之后，那一行永远是
+        `running` ⇒ `any_job_running()` 永远为真 ⇒ 重排被永久挡住，
+        产品内没有任何恢复路径。
+
+        判据是「开始得太久、而没有任何进展」—— 阈值由调用方给（它有时钟），
+        这一层只负责执行。`started_at = 0` 的旧行**不碰**（那是没记时间的
+        历史数据，不能当成「1970 年开始的作业」）。
+        """
 
     def update(self, job_id: str, **fields: Any) -> None:
         """更新进度字段。`run_batches` 按这个名字调。"""

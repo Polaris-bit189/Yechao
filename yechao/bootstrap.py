@@ -337,6 +337,7 @@ class App:
             model=self.model,
             config=self.config,
             audit=self.audit,
+            clock=self.clock,
         )
 
     # ── 健康（`GET /api/health` 的三问）────────────────────────

@@ -614,13 +614,13 @@ def _run_batch(
     total_name = 0
     names_checked = 0
     for m in batch.messages:
-        # ※ 关键字名 `known_uins` 是 `scrub.scrub()` 的**端口名**
+        # ※ 关键字名 `known_accounts` 是 `scrub.scrub()` 的**端口名**
         # （那边的判据骨架不在本次改名范围），语义就是「本机已知的账号」。
         clean, report = scrub.scrub(
-            m.content, names, known_uins=known_accounts
+            m.content, names, known_accounts=known_accounts
         )
         clean_sender, sender_report = scrub.scrub(
-            m.sender, names, known_uins=known_accounts
+            m.sender, names, known_accounts=known_accounts
         )
         scrubbed_texts.append(clean)
         prompt_messages.append(_with_scrubbed_sender(m, clean_sender))

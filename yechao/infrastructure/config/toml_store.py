@@ -228,15 +228,9 @@ class TomlConfigStore:
         if not isinstance(rows, list):
             raise ConfigError(f"{self.persons_path} 的 `[[person]]` 不是一个数组")
         for r in rows:
-            # ※ 这个键**改过名**（`uin` → `account`）。旧文件要**说清怎么改**，
-            # 不能默默跳过 —— 默默跳过时 `persons()` 返回空表，而空表与
-            # 「这个人不在名单里」形状一样：症状是人物筛选与姓名脱敏都少一份
-            # 名单，且**不报错**。
-            if isinstance(r, dict) and "account" not in r and "uin" in r:
+            if not isinstance(r, dict) or "account" not in r:
                 raise ConfigError(
-                    f"{self.persons_path} 里的键 `uin` 已经改名为 `account`"
-                    f"（见 README 的对外契约）。把 `uin =` 改成 `account =`，"
-                    f"或删掉这份文件重建。"
+                    f"{self.persons_path} 的 [[person]] 缺了 `account` 键"
                 )
         return [
             PersonConfig(
@@ -284,11 +278,9 @@ class TomlConfigStore:
             if not isinstance(r, dict) or "slug" not in r:
                 continue
             slug = str(r["slug"])
-            # ※ **多出来的键要忽略，不是报错**。
-            # 旧版本的类目表里有 `icon`，用户手上的 `categories.toml` 可能
-            # 还带着它。上面那条「读不出来就抛」针对的是**读不出来的文件**
-            # （键名写错、TOML 语法坏了），不是**多出来的键** ——
-            # 一份旧配置不该让用户打不开自己的数据。
+            # ※ **多出来的键忽略，不报错**。上面那条「读不出来就抛」
+            # 针对的是**读不出来的文件**（键名写错、TOML 语法坏了），
+            # 不是**多出来的键**。
             cats.append(
                 Category(
                     slug=slug,

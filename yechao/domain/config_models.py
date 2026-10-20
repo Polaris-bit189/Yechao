@@ -71,10 +71,7 @@ class PersonConfig:
     各有一份（前端那份见 `web/src/pages/SetupPage.tsx`）：前端做**即时反馈**，
     后端做**真正的守门**（前端校验可以被绕过）。
 
-    ※ 字段名刻意**不叫 `uin`**：那是某一家群聊平台的原生词，而源层是
-    抽象的（`MessageSource` 端口）。见 `domain/models.py` 的
-    `PendingMessage.actor_account`。
-    """
+"""
 
     account: int
     label: str = ""

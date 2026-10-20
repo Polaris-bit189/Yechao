@@ -383,22 +383,13 @@ class SqliteStore:
 
         ※ `items` 允许为空：一轮「一条都没产出」的跑也必须留下账。
 
-        ## ※ 契约改过一次：从「一一对应」改成「按 `item_id` 挂」
+        ## ※ 来源按 `SourceRef.item_id` 挂，不是按下标一一对应
 
-        原来的实现假设 `sources[i]` 属于 `items[i]`（顺序一一对应），
-        并在长度不对时拒绝写入。
-
-        而**跨群转发合并**之后，一条条目可以挂**多条**来源 ——
+        **跨群转发合并**之后，一条条目可以挂**多条**来源 ——
         `len(sources) > len(items)` 是**正常状态**，不是配错。
-        第一次跑合并之后的 refine 时，这个契约当场把整轮抽取打崩了：
 
-            来源比条目多：20 > 18
-
-        而它给出的错误信息（「调用方把两个列表配错了」）**指向了错误的
-        方向** —— 调用方没配错，是契约本身错了。
-
-        ⇒ 现在来源用 `SourceRef.item_id` 挂：`0` 表示「随条目顺序自动分配」，
-        非零表示「挂到这条条目上」。合并之后的来源都带真 `item_id`。
+        ⇒ 来源用 `SourceRef.item_id` 挂：`0` 表示「随条目顺序自动分配」，
+        非零表示「挂到这条条目上」。
 
         ※ 仍然保留一条长度判据，但它换了个方向：**没有 `item_id` 的来源
         数量不能超过条目数** —— 那是唯一可能配错的形状。
@@ -1080,6 +1071,21 @@ class SqliteStore:
             "SELECT * FROM jobs WHERE job_id = ?", (job_id,)
         ).fetchone()
         return dict(row) if row else None
+
+    def reclaim_stale(self, *, now: int, older_than: int) -> int:
+        """把开始得太久、且没有任何进展的 `running` 作业标成失败。"""
+        cutoff = now - older_than
+        with transaction(self.conn):
+            cur = self.conn.execute(
+                """
+                UPDATE jobs
+                   SET state = 'failed', finished_at = ?,
+                       error = '进程中途退出了 —— 这个作业没有正常收尾'
+                 WHERE state = 'running' AND started_at > 0 AND started_at < ?
+                """,
+                (now, cutoff),
+            )
+            return cur.rowcount
 
     def any_job_running(self) -> bool:
         row = self.conn.execute(

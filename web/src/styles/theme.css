@@ -519,6 +519,103 @@
   opacity: 0;
 }
 
+/* ── 远山 ────────────────────────────────────────────────────
+ *
+ * 形状在 Sky.tsx 里（SVG 路径），这里只管颜色。颜色全部用 `color-mix`
+ * 从各主题自己的 `--bg` 混出 —— 所以这里只有**一份**结构，六套各有各的山色。
+ *
+ * ※ **亮度纪律**：混色比例压在 15% 以内。山是大面积色块，混过头会把正文
+ *   底下的「最亮像素」抬高 —— 而对比度测试**扫不到 SVG 里的颜色**
+ *   （它只扫 CSS 规则块里的 rgba 字面量），这一处只能靠人守住。
+ */
+.sky__far {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 远层淡、近层浓 —— 空气透视。两层都压着山的形状，合起来才有纵深。 */
+.sky__far-b {
+  fill: currentColor;
+  opacity: 0.32;
+}
+
+.sky__far-a {
+  fill: currentColor;
+  opacity: 0.6;
+}
+
+/* 六套的山色。雾最淡（山被雾吞掉大半），月最清（清辉下轮廓分明）。 */
+[data-theme='yoi'] .sky__far {
+  color: color-mix(in srgb, var(--bg) 90%, var(--fg-2));
+}
+
+[data-theme='kiri'] .sky__far {
+  color: color-mix(in srgb, var(--bg) 95%, var(--fg-2));
+}
+
+[data-theme='tsuki'] .sky__far {
+  color: color-mix(in srgb, var(--bg) 88%, var(--fg-2));
+}
+
+[data-theme='sakura'] .sky__far {
+  color: color-mix(in srgb, var(--bg) 91%, var(--fg-2));
+}
+
+[data-theme='yuu'] .sky__far {
+  color: color-mix(in srgb, var(--bg) 92%, var(--fg-2));
+}
+
+/* 月：山前再立一排竹影。
+ * 竹子在这个尺度上就是一组高低不一的竖线 —— 画出叶子反而显得假。
+ * 「像」比「全」重要。上端用 mask 淡出，免得看着像一排栅栏。 */
+[data-theme='tsuki'] .sky__grain::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 56%;
+  color: color-mix(in srgb, var(--bg) 86%, var(--fg-2));
+  background-image:
+    repeating-linear-gradient(90deg, currentColor 0 3px, transparent 3px 53px),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 27px,
+      currentColor 27px 29px,
+      transparent 29px 83px
+    );
+  opacity: 0.42;
+  -webkit-mask-image: linear-gradient(0deg, #000 0 52%, transparent 100%);
+  mask-image: linear-gradient(0deg, #000 0 52%, transparent 100%);
+}
+
+/* ── 宣纸颗粒 + 暗角 ─────────────────────────────────────────
+ *
+ * 颗粒是**这一轮最不起眼、但最管用的一条**：纯 CSS 渐变之所以看着假，
+ * 就是因为它太干净 —— 真实的纸面、真实的夜都有噪点。
+ *
+ * 暗角把四角压暗，视线自然收进中间的内容区。
+ *
+ * 两者都是**压暗**的，不会成为对比度测试里那个「最亮像素」。 */
+.sky__grain {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    ellipse 130% 95% at 50% 38%,
+    transparent 42%,
+    rgba(0, 0, 0, 0.42) 100%
+  );
+}
+
+.sky__grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  opacity: 0.07;
+}
+
 /* 宵：右上斜光束，极慢地扫；四角星向光源聚集、明灭。 */
 [data-theme='yoi'] .sky {
   background:

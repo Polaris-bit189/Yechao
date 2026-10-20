@@ -374,9 +374,7 @@ def create_app(app_obj: Any) -> FastAPI:
 
         app_obj.config.set_categories(
             CategorySet(
-                # ※ 快照是**上一次**写下的，可能带那时才有、现在已经没有的键
-                # （`icon` 就是）。只取现在认识的字段 —— 让一份旧快照把
-                # 「撤销」变成一个 500，是拿数据格式的历史去惩罚用户。
+                # 只取现在认识的字段 —— 多出来的键忽略，不报错。
                 categories=[
                     Category(**{k: v for k, v in c.items() if k in _CATEGORY_KEYS})
                     for c in snapshot["categories"]
@@ -885,8 +883,7 @@ def create_app(app_obj: Any) -> FastAPI:
                     Category(
                         slug=str(r["slug"]),
                         label=str(r.get("label") or r["slug"]),
-                        # 包里多出来的键（旧版本的 icon）忽略掉，
-                        # 不报错 —— 一份旧配置包不该导不进来。
+                        # 包里多出来的键忽略掉，不报错。
                         desc=str(r.get("desc") or ""),
                     )
                     for r in cats if isinstance(r, dict) and "slug" in r
@@ -1014,8 +1011,7 @@ def _check_slug(slug: str) -> None:
         )
 
 
-#: 快照里认识的那几个键。※ 它是**读旧快照**时的白名单（见 `categories_undo`）：
-#: 类目表在演进（`icon` 就被拿掉过），而快照是**上一次**写的。
+#: 快照里认识的那几个键 —— 读快照时的白名单（见 `categories_undo`）。
 _CATEGORY_KEYS = ("slug", "label", "desc")
 
 

@@ -31,6 +31,13 @@ from yechao.infrastructure.persistence.sqlite_store import SqliteStore
 from yechao.infrastructure.runtime.audit_log import NullAuditLog
 
 
+class _Clock:
+    """一个固定的时钟 —— 重排只用它记作业的开始时刻。"""
+
+    def now(self) -> int:
+        return 1792491986
+
+
 # ── 桩 ──────────────────────────────────────────────────────────────
 
 
@@ -103,6 +110,7 @@ def _deps(store: SqliteStore, mapping: dict[str, str]) -> reorder_uc.ReorderDeps
     return reorder_uc.ReorderDeps(
         items=store, edits=store, jobs=store,
         model=_Model(mapping), config=_Cfg(), audit=NullAuditLog(),
+        clock=_Clock(),
     )
 
 
@@ -136,7 +144,7 @@ def test_已有作业在跑时重排被拒(store) -> None:
     `ValidationError`。
     """
     _insert(store, ["图书馆闭馆通知"])
-    store.create_job("refine", 10, ts=1)  # 另一个作业在跑
+    store.create_job("refine", 10, ts=_Clock().now())  # 另一个作业在跑
 
     with pytest.raises(ValidationError) as ei:
         reorder_uc.run(_deps(store, {"图书馆闭馆通知": "todo"}))
@@ -177,6 +185,7 @@ def test_取消之后重排会停在批与批之间(store) -> None:
     deps = reorder_uc.ReorderDeps(
         items=store, edits=store, jobs=store,
         model=_CancellingModel(), config=_Cfg(), audit=NullAuditLog(),
+        clock=_Clock(),
     )
     out = reorder_uc.run(deps)
 

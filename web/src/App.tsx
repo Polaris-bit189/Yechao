@@ -39,6 +39,26 @@ const PAGES = [
 ]
 
 /**
+ * 品牌区的两行字。彩蛋主题下换一套 —— 但**只换这两行**，页面本身、路由、
+ * 数据都不动。
+ *
+ * 为什么是「古登堡 / 活字」：那套主题的视觉是活版印刷（朱砂油墨、宋体、
+ * 零圆角、硬边压印），而活字印刷印出来的东西就是报纸 —— 所以「日报」在
+ * 那一套里叫「活字」是顺的，不是硬凑的。其余五个页面名不动。
+ *
+ * ※ 主题 id 仍然是 `katsuji`，敲键口令、测试断言都不受影响 —— 这里换的
+ *   只是**显示文本**。
+ */
+function brandOf(theme: ThemeId): string {
+  return theme === EGG.id ? '古登堡' : '夜抄'
+}
+
+function badgeOf(page: Page, theme: ThemeId): string {
+  if (theme === EGG.id && page === 'day') return '活字'
+  return PAGES.find((x) => x.id === page)?.label ?? ''
+}
+
+/**
  * 应用外壳：导航 + 内容区 + 浮层。
  *
  * 导航只有一套 DOM。规格明写：桌面与移动两套都放进 DOM，读屏软件会读两遍。
@@ -97,10 +117,11 @@ export function App() {
       <div className={remindDone ? 'shell is-bare' : 'shell'}>
         <nav className="rail" aria-label="主导航">
           <div className="rail__brand">
-            夜抄
+            {brandOf(theme)}
             {/* ※ 这里原来写死成「日报」。规格要的是**页面名徽标** ——
-                它得跟着当前页变，否则切到信息流时它还写着「日报」。 */}
-            <span>{PAGES.find((x) => x.id === page)?.label ?? ''}</span>
+                它得跟着当前页变，否则切到信息流时它还写着「日报」。
+                ※ 彩蛋主题下它也跟着换（见 badgeOf）。 */}
+            <span>{badgeOf(page, theme)}</span>
           </div>
 
           <ul className="rail__nav">

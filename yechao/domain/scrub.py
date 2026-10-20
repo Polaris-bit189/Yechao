@@ -480,7 +480,7 @@ def scrub(
     text: str,
     names: list[str] | tuple[str, ...] = (),
     *,
-    known_uins: list[int] | tuple[int, ...] = (),
+    known_accounts: list[int] | tuple[int, ...] = (),
 ) -> tuple[str, ScrubReport]:
     """**出网脱敏的唯一入口。**
 
@@ -489,7 +489,7 @@ def scrub(
     而实际有东西出去了。
     所以审计读的是本函数返回的 `ScrubReport`，而不是自己再扫一遍。
 
-    `known_uins`：本机已知的**账号**（uin 是数据源给的稳定数字 ID）。
+    `known_accounts`：本机已知的**账号**。
     它们同样是「指得到具体人」的东西，所以走**姓名那条路** ——
     精确子串替换，出现在哪里都抹（包括 URL 里的）。
     """
@@ -505,11 +505,11 @@ def scrub(
     checked = 0
     all_names = list(names)
 
-    # 已知 uin 进姓名名单 —— 它们同样是「指得到具体人」的东西。
-    # ※ 只管 ≥ 5 位的（与**信号 C** 的下界一致）：短数字（如 uin=7）满地都是，
+    # 已知账号进姓名名单 —— 它们同样是「指得到具体人」的东西。
+    # ※ 只管 ≥ 5 位的（与**信号 C** 的下界一致）：短数字满地都是，
     # 抹了会把正文咬得稀烂。
-    for uin in known_uins:
-        s = str(uin)
+    for account in known_accounts:
+        s = str(account)
         if len(s) >= 5:
             all_names.append(s)
 

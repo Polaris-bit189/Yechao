@@ -39,6 +39,9 @@ class ReorderDeps:
     model: Any      # ModelClient
     config: Any     # ConfigStore
     audit: Any      # EgressAudit
+    #: 时钟。※ 作业的 `started_at` 要记**真的**时间 —— 原来它恒为 0
+    #: （1970-01-01），而「这个作业跑了多久」正是回收陈旧作业要用的判据。
+    clock: Any = None
 
 
 #: 每条目重判时取多少条上下文。
@@ -70,11 +73,19 @@ def run(deps: ReorderDeps, *, budget: int | None = None) -> dict[str, Any]:
     # `busy`，`create_job` 不是 `create`。原来这里写成 `busy()`，而实现里
     # 只有 `any_job_running()` —— 一跑就 AttributeError，而 `reorder` 此前
     # 零测试，所以这个错位一直没被发现。
+    # ※ **先回收「显然已经死掉」的作业，再判忙。**
+    #
+    # 进程被 kill / OOM / 断电之后，那一行 `state='running'` 永远不会被写掉
+    # ⇒ 重排被永久挡住，而产品内没有办法恢复。阈值取两小时：一次重排在
+    # 演示规模下是秒级，真实规模下也是分钟级，两小时足够覆盖任何正常情况。
+    now = deps.clock.now()
+    deps.jobs.reclaim_stale(now=now, older_than=2 * 3600)
+
     if deps.jobs.any_job_running():
         # ※ 409 的文案要**说清下一步**（等它结束），不是「出错了」。
         raise ValidationError("已有任务在跑，等它结束再来")
 
-    job_id = deps.jobs.create_job("reorder", total=len(all_items))
+    job_id = deps.jobs.create_job("reorder", total=len(all_items), ts=now)
     actor = f"reorder:{job_id}"
 
     chunks = [all_items[i : i + _BATCH] for i in range(0, len(all_items), _BATCH)]
@@ -148,9 +159,9 @@ def _reorder_chunk(deps: ReorderDeps, chunk: list[Item], *, actor: str) -> int:
         if target is None or not c.kind:
             continue
 
-        # ※ **手改过的类目不动。** `kind_locked` 一直是「写了没人读」：
-        # `set_kind` 置 1、撤销置 0，而重排不看它 —— 于是用户改完类目、
-        # 跑一次重排就被静默冲掉（静默的数据丢失是最难发现的一种）。
+        # ※ **手改过的类目不动。** `set_kind` 把它置 1、撤销置 0。
+        # 重排必须跳过它 —— 否则用户改完类目、跑一次重排就被静默冲掉
+        # （静默的数据丢失是最难发现的一种）。
         if target.kind_locked:
             continue
         if target.kind == c.kind:

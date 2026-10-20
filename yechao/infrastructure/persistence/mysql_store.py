@@ -1082,6 +1082,21 @@ class MySQLStore:
         )
         return dict(row) if row else None
 
+    def reclaim_stale(self, *, now: int, older_than: int) -> int:
+        cutoff = now - older_than
+        with self._transaction() as cur:
+            cur.execute(
+                """
+                UPDATE `jobs`
+                   SET `state` = 'failed', `finished_at` = %s,
+                       `error` = '进程中途退出了 —— 这个作业没有正常收尾'
+                 WHERE `state` = 'running' AND `started_at` > 0
+                   AND `started_at` < %s
+                """,
+                (now, cutoff),
+            )
+            return cur.rowcount
+
     def any_job_running(self) -> bool:
         row = self._one(
             "SELECT 1 AS `x` FROM `jobs` WHERE `state` = 'running' LIMIT 1"

@@ -17,11 +17,10 @@
 `items.deleted` 是一个**标记**，不是 `DELETE FROM`。而且 `edits` 表是
 **append-only** 的事件流 —— 状态是事件的折叠结果。
 
-## ※ 改过列名：`actor_uin` → `actor_account`
+## ※ `CREATE TABLE IF NOT EXISTS` 不会改一张已经存在的表
 
-`CREATE TABLE IF NOT EXISTS` **不会**改一张已经存在的表。所以一个旧库文件
-（列还叫 `actor_uin`）配上新代码，症状是查询报 `no such column`——
-**响的**，不是静默的。这是刻意的：一个静默的「自动迁移」失败起来更难查。
+所以表结构变了之后，旧库文件配上新代码，症状是查询报 `no such column`
+—— **响的**，不是静默的。这是刻意的：一个静默的「自动迁移」失败起来更难查。
 
 重来一次的命令是 `python -m yechao demo --fresh`（它会删掉旧库重建）。
 不在这里写自动 `ALTER TABLE`：那种迁移失败一半时，库会处在两种结构之间，
@@ -53,7 +52,7 @@ CREATE TABLE IF NOT EXISTS messages (
     -- 账号：发送者在源系统里的标识（群里的号码、工号、学号）。匿名消息为 NULL。
     actor_account INTEGER,
     -- ※ 默认值**不锚在某一个具体源的名字上**：空串 = 这条消息没标来源。
-    -- 写死一个源名（曾经是 'qq'）会让别的源进来的消息也自称来自它 ——
+    -- 写死一个源名会让别的源进来的消息也自称来自它 ——
     -- 一条记错的来源在审计里看不出来，因为它格式完全正常。
     source      TEXT    NOT NULL DEFAULT '',
     -- ※ 规范化之后的文本才是**唯一真相**。原样存一份 raw 是为了
