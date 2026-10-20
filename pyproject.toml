@@ -15,13 +15,31 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# ※ 云上的两个驱动**刻意不进默认依赖**。
+#
+# 理由是本项目的一条红线：「评委 clone 下来直接跑」不能要求先配环境。
+# `python -m yechao demo` 走的是 SQLite + 空缓存，那两样都是标准库/内置的
+# —— 所以默认装的那一份必须能跑通三步复现。
+#
+# ※ 而这两个驱动都是**延迟导入**的（`connect_mysql` / `RedisCache.from_url`
+# 里才 import）：没装它们时，程序**报错并说清怎么装**，而不是悄悄退回本地
+# —— 退回去的症状是「用户以为连上了云库，其实写在本地文件里」，而它
+# **看起来是成功的**。
+mysql = ["pymysql>=1.1"]
+redis = ["redis>=5"]
+
 dev = [
     "pytest>=8",
     "httpx>=0.27",
 ]
 
 [project.scripts]
-yechao = "yechao.interfaces.cli:main"
+# ※ 指到 `__main__`，**不是** `interfaces.cli`。
+# 写者锁接在 `__main__` 上（`cli.main` 会被测试在同一进程里反复调用，
+# 锁放进去它们会互相抢锁）。指错的话，装包之后的 `yechao refine`
+# **不拿锁**，而 `python -m yechao refine` 拿 —— 两条入口行为不一致，
+# 且从命令上看不出来。
+yechao = "yechao.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["yechao*"]
@@ -31,6 +49,6 @@ yechao = ["web/dist/**/*", "web/dist/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# ⚠️ 不设 `addopts = -q`：默认输出里那句 "N passed" 是空转自检要读的东西，
+# ※ 不设 `addopts = -q`：默认输出里那句 "N passed" 是空转自检要读的东西，
 # 而 `-q` 会把每层跑了几个用例压掉。护栏的报告必须看得见。
 filterwarnings = ["error::DeprecationWarning:yechao.*"]

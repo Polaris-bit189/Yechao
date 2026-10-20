@@ -1,6 +1,6 @@
 # 夜抄 · 单机部署
 #
-# ⚠️ 这份 compose 是**部署链路的声明侧**。`tests/contracts/test_deploy_contract.py`
+# ※ 这份 compose 是**部署链路的声明侧**。`tests/contracts/test_deploy_contract.py`
 # 从它这里读「需要哪些必填变量」，再从 `.env.example` 与 `deploy/entrypoint.sh`
 # 读「脚本实际给了什么」—— **两边各自读，不手写一张期望表**。
 # 手写的期望表会漂移，而漂移是静默的（`docs/补遗` §三）。
@@ -17,7 +17,7 @@ services:
     ports:
       - "${YECHAO_PORT:?必须指定宿主端口}:8000"
     environment:
-      # ⚠️ 下面每一项都是**必填**（`${VAR:?msg}` 的写法）。
+      # ※ 下面每一项都是**必填**（`${VAR:?msg}` 的写法）。
       # 缺任何一项，compose 会在**创建任何资源之前**中止并指出缺的是哪个。
       #
       # 这个写法的价值：`docs/补遗` §三 第一种失败是「参数契约对不上 ——
@@ -29,19 +29,138 @@ services:
       YECHAO_LLM_BASE_URL: "${YECHAO_LLM_BASE_URL:?必须指定模型端点}"
       YECHAO_LLM_MODEL: "${YECHAO_LLM_MODEL:?必须指定模型名}"
       # 密钥**可以**为空（本地 Ollama 不需要），所以用 `${VAR:-}` 而不是 `:?`。
-      # ⚠️ 这个区别是刻意的：「必填」与「可空」不能都写成同一种形状，
+      # ※ 这个区别是刻意的：「必填」与「可空」不能都写成同一种形状，
       # 否则一个「忘了配密钥」会被当成「配了一个空密钥」。
       YECHAO_API_KEY: "${YECHAO_API_KEY:-}"
+      # ※ 数据库连接串**必填**，而且**只在环境变量里**（不进配置文件）：
+      # 配置文件会被导出（`/api/config/export`）、会被提交，而连接串里有密码。
+      #
+      # ※ 为什么把它写成必填而不是「不填就用 SQLite」：赛题要求关联开通
+      # RDS —— 而「忘了填」与「填了但填错」的症状完全不同（前者静默落在
+      # 本地文件里，后者连不上会报错）。`${VAR:?}` 让第一种在**启动前**
+      # 就被拦下。要跑本机单机版就在 `.env` 里显式写 sqlite://<路径>。
+      YECHAO_DB_URL: "${YECHAO_DB_URL:?必须指定数据库连接串（云上指向 RDS）}"
+      # ※ 同理，Redis 也是必填。留空字符串不算「没配」——
+      # `${VAR:?}` 对空值同样报错，所以「配了一个空连接串」也进不来。
+      YECHAO_REDIS_URL: "${YECHAO_REDIS_URL:?必须指定 Redis 连接串（云上指向 Redis）}"
     volumes:
       - "${YECHAO_DATA_DIR:?}:${YECHAO_DATA_DIR:?}"
       - "${YECHAO_CONFIG_DIR:?}:${YECHAO_CONFIG_DIR:?}"
-    # ⚠️ 健康检查指向一个**真的会读库**的端点，不是 `/`。
-    # 首页是静态文件 —— 它 200 不代表数据库通、配置读得到。
-    # 一个只探静态页的健康检查会让「服务起了但库是坏的」看起来像健康。
+    # ※ 健康检查指向 `/api/health` —— 它**同时**回答三件事：
+    # 服务活着、库通不通、缓存是哪个后端。
+    #
+    # 原来探的是 `/api/items?limit=1`，那个探活有两个盲区：
+    #   · **验不到缓存**：缓存挂了它照样 200 —— 而那是「失败看起来像成功」；
+    #   · **分不清两种不健康**：「服务活着但库坏了」与「服务根本没起来」
+    #     在编排层看起来一样，可排查方向完全不同。
+    #
+    # ※ 非 2xx = 不健康：`urlopen` 在 4xx/5xx 上抛异常 ⇒ 退出码非零。
+    # 库挂了时 `/api/health` 回 **503**（理由见 `bootstrap.App.health`：
+    # 这个产品的每一条路由都要读库，库挂了整个产品就没法用）。
+    # ※ 缓存挂了它**仍然回 200** —— 那是降级不是故障，重启修不好 Redis，
+    # 只会让容器一直重启。降级写在响应体的 `degraded` 与 `cache.ok` 里。
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/items?limit=1',timeout=3)"]
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+    restart: unless-stopped
+
+  # ※ 单机部署自带的 Redis。**云上把 `YECHAO_REDIS_URL` 指向云 Redis 即可**，
+  # 这个服务可以不起（`docker compose up yechao` 只起应用）。
+  #
+  # 为什么留一个本地的：缓存那条路（`RedisCache`）如果只在云上跑得着，
+  # 它就永远没有本地验证过 —— 而「写了但没跑」正是本项目最在意的那类失败。
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ── 定时：每天跑一次「今天的日报」────────────────────────────────
+  #
+  # 产品的定位是**每天一份**日报，而在这之前只有手动 `python -m yechao digest`
+  # —— 没人跑就没有。这个服务就是那个「有人跑」。
+  #
+  # ## 为什么是**独立的一个服务**
+  #
+  # ① **失败要看得见。** 定时任务静默失败是最糟的形状：一个后台循环挂在应用
+  #    容器里时，循环死了而 `serve` 还活着 —— 容器照样 healthy、
+  #    `docker compose ps` 照样是绿的，而「今天没有日报」**没有任何地方报出来**。
+  #    独立服务里循环就是主进程：它死了容器就退出，`restart: unless-stopped`
+  #    把它拉起来，重启次数在 `docker compose ps` 里，原因在
+  #    `docker compose logs scheduler` 里。
+  # ② **生命周期不同。** `serve` 要一直活着，日报每天只跑一次。同一个容器里
+  #    两个进程，前台那个退出就等于容器退出 —— 另一个会被一起带走。
+  # ③ **能单独补跑**：`docker compose run --rm scheduler python -m yechao.interfaces.daily`。
+  #
+  # ## 为什么不用宿主机的 cron / 计划任务
+  #
+  # 那要求复现的人先配宿主，而 Windows 的「任务计划程序」与 Linux 的 crontab
+  # **根本不是同一个东西** —— 一条命令起得来是红线，所以定时也待在 compose 里。
+  #
+  # ## 为什么 `depends_on` 应用（而且等它健康）
+  #
+  # 只为一件事：**配置目录的初始化**。`entrypoint.sh` 负责「目录空时从
+  # config.example 填一份」并把 `YECHAO_LLM_BASE_URL` / `YECHAO_LLM_MODEL`
+  # 写进 `settings.toml`，而模型端点**只从配置文件读**（`bootstrap._read_llm`）。
+  # 调度器先跑起来而配置还没准备好，症状是「网页上模型能用，日报里永远是
+  # 机械行」—— 两边都不报错。
+  #
+  # 等它健康，而不是把那一段复制一份到调度器里：两份实现必漂移。
+  scheduler:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    # ※ 与 `yechao` 同一个镜像。这里**也**写 `build`：`docker compose up`
+    # 不会替一个只写了 `image` 的服务去构建 —— 它会去 registry 拉一个
+    # 本地才建得出来的 tag，然后失败。
+    image: yechao:latest
+    # ※ 覆盖镜像的 ENTRYPOINT（那个会把 `serve` 起起来）。
+    # 写 `command` 是不够的：ENTRYPOINT 还在，它会把 command 当成自己的参数。
+    entrypoint: ["./deploy/scheduler.sh"]
+    environment:
+      # 与 `yechao` 同一组必填项 —— 它读写**同一个库、同一份配置**。
+      # 缺一项的症状是「应用起得来、日报永远没生成」，而两个服务各看一半日志。
+      YECHAO_DATA_DIR: "${YECHAO_DATA_DIR:?必须指定数据目录（容器内挂载点）}"
+      YECHAO_CONFIG_DIR: "${YECHAO_CONFIG_DIR:?必须指定配置目录（容器内挂载点）}"
+      YECHAO_LLM_BASE_URL: "${YECHAO_LLM_BASE_URL:?必须指定模型端点}"
+      YECHAO_LLM_MODEL: "${YECHAO_LLM_MODEL:?必须指定模型名}"
+      YECHAO_API_KEY: "${YECHAO_API_KEY:-}"
+      YECHAO_DB_URL: "${YECHAO_DB_URL:?必须指定数据库连接串（云上指向 RDS）}"
+      YECHAO_REDIS_URL: "${YECHAO_REDIS_URL:?必须指定 Redis 连接串（云上指向 Redis）}"
+      # 每天几点跑（24 小时制 `HH:MM`，容器本地时区 = Asia/Shanghai）。
+      # ※ 这一项**可以**为空（用 `${VAR:-}` 而不是 `:?`）—— 它有默认值，
+      # 而「默认早上跑」正是产品要的。区别是刻意的：「必填」与「有默认」
+      # 不能都写成同一种形状（见 YECHAO_API_KEY 那一段）。
+      YECHAO_DAILY_AT: "${YECHAO_DAILY_AT:-07:30}"
+    volumes:
+      - "${YECHAO_DATA_DIR:?}:${YECHAO_DATA_DIR:?}"
+      - "${YECHAO_CONFIG_DIR:?}:${YECHAO_CONFIG_DIR:?}"
+    depends_on:
+      yechao:
+        condition: service_healthy
+    # ※ 探的是**心跳文件的新鲜度**，不是「容器还在不在」。
+    #
+    # 一个卡死在 `sleep` 里的调度器与一个正常工作的调度器，在
+    # `docker compose ps` 里长得一模一样（都是 Up）—— 而前者意味着
+    # 「今天没有日报」，且没人会知道。心跳文件每 30 秒被摸一次，
+    # 超过 10 分钟没更新 ⇒ unhealthy。
+    #
+    # ※ 窗口（600 秒）取得比一次跑可能花的时间长：模型端点慢的时候，
+    # 循环正卡在 `python -m yechao.interfaces.daily` 里面，那时它是**在干活**，
+    # 不是卡住了。窗口太短会把「慢」报成「死了」，而误报会让人学会忽略它。
+    #
+    # ※ 文件不在 / 读不到 ⇒ 抛异常 ⇒ 退出码非零 ⇒ unhealthy。
+    # **不兜底**：一个永远成功的探活比没有探活更危险。
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,sys,time;p=os.path.join(os.environ.get('YECHAO_DATA_DIR','/app/data'),'.scheduler-heartbeat');sys.exit(0 if time.time()-os.path.getmtime(p)<600 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
