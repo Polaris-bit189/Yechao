@@ -1,0 +1,10 @@
+{
+  "fixture": "qingwu-notices.html",
+  "source_url": "https://notice.example.test/qingwu/index.html",
+  "fetched_at": null,
+  "bytes": 3276,
+  "sha256": "8ff5bdbdd7e0ecca2c40eac87ba2a129694bba708efe9c5edf12acce0fc609fe",
+  "robots": null,
+  "user_agent": null,
+  "note": "本页内容为本项目**自编**：假校名「青梧」、假域名 example.test（RFC 2606 保留，永远不会解析）、假电话 17700001003、假群号 820000005。**不含任何真实站点的真实内容**。source_url 是**虚构**的，它唯一的用途是给这批通知一个稳定的命名空间（msg_id 由它算出）—— 于是「直接读那个 URL」与「读这份夹具」算出同一批 id，重跑摄取不会重复入库。fetched_at / robots / user_agent 为 null：这份夹具是**手写**的，不是抓下来的，所以它没有拓取时刻与 robots 结论。sha256 是写入本侧车时这份 HTML 的指纹，用来发现「HTML 被改过但侧车没跟着重新生成」。"
+}

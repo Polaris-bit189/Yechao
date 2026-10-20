@@ -14,7 +14,7 @@
   · 输入截断 —— 没有信号（所以只能靠切批预防）
   · 输出截断 —— `finish_reason == "length"`（**有**信号，必须用）
 
-⚠️ 这是一个真实存在的区别，不是我编的接口：OpenAI 兼容端点确实在
+※ 这是一个真实存在的区别，不是我编的接口：OpenAI 兼容端点确实在
 `finish_reason` 上报 `length`。
 
 ### 二、JSON 被包在 Markdown 里
@@ -25,19 +25,20 @@
 ⇒ **剥围栏在这里做**（而不是在解析里）：因为它与「调用」是同一层的事
 （都是「端点实际返回了什么」），而解析那一层只该处理已经干净的文本。
 
-⚠️ 但剥不干净时**不在这里抛** —— 返回原文，由解析层返回空列表。
+※ 但剥不干净时**不在这里抛** —— 返回原文，由解析层返回空列表。
 理由：「剥不出 JSON」与「JSON 是坏的」处置相同（都是丢这批），
 而在这里抛会让调用方分不清它与网络错误。
 
 ### 三、`enable_thinking` 是三态
 
-`None` = **不发这个字段**（通用 OpenAI 端点最安全的形状）；
-`False` / `True` = 显式发那个值。
+`None` = **不发这个字段**；`False` / `True` = 显式发那个值。
 
-⚠️ 前端逐字（`Settings.tsx`）：「'omit' 必须发 **null**（= 不发这个字段），
-**不是 `false`**：两者在界面上看不出区别，报文里却是两个不同的东西——
-`false` 发给通用 OpenAI 端点会 400，而『不发』对 Qwen3 混合思考模型意味着
-慢 40 倍」。
+※ 这三态压不成两态。配置页上「不发」和「发 false」看起来是一回事，
+发出去的请求体却是两个不同的东西：
+  · 通用 OpenAI 端点收到 `false` 会 400 —— 它不认这个字段
+  · Qwen3 这类混合思考模型**收不到**这个字段时会走慢路径，实测慢约 40 倍
+
+所以 `None` 与 `False` 必须分开走。
 
 ⇒ 所以这里是 `if self.enable_thinking is not None:` 而不是
 `if self.enable_thinking:` —— 后者会把 `False` 也当成「不发」。
@@ -55,7 +56,7 @@ from yechao.domain.errors import ModelError, ModelOutputInvalid, ModelTruncated
 
 #: 默认超时（秒）。
 #:
-#: ⚠️ 600 而不是 180：**思考型模型 + 大输出预算**的一次请求可以跑好几分钟
+#: ※ 600 而不是 180：**思考型模型 + 大输出预算**的一次请求可以跑好几分钟
 #: （实测 qwen3:8b 在 32768 预算上单批 3-5 分钟）。超时太短的后果不是
 #: 「慢一点」，是**这一批直接没跑成**，而用户看到的是「条目少了一些」。
 DEFAULT_TIMEOUT = 600
@@ -65,7 +66,7 @@ DEFAULT_TIMEOUT = 600
 class ModelConfig:
     base_url: str
     model: str
-    #: ⚠️ **三态**。`None` = 不发这个字段。见模块 docstring 三。
+    #: ※ **三态**。`None` = 不发这个字段。见模块 docstring 三。
     enable_thinking: bool | None = None
     api_key: str = ""
     timeout: int = DEFAULT_TIMEOUT
@@ -76,7 +77,7 @@ class ModelConfig:
 def _pick_finish_reason(payload: dict[str, Any]) -> str:
     """从响应里取 `finish_reason`。
 
-    ⚠️ 兼容几种形状：`choices[0].finish_reason`、`choices[0].finish_details.type`
+    ※ 兼容几种形状：`choices[0].finish_reason`、`choices[0].finish_details.type`
     （Anthropic 风格）、以及某些端点把 `stop_reason` 放在顶层。
     取不到时返回空串 —— **不猜**。「取不到」与「不是 length」是两件事，
     混起来会让截断被漏判。
@@ -98,7 +99,7 @@ def _pick_finish_reason(payload: dict[str, Any]) -> str:
 def strip_code_fence(text: str) -> str:
     """剥掉 Markdown 围栏。
 
-    ⚠️ 只剥**最外层**那一道，而且只在它真的包住整段时剥：
+    ※ 只剥**最外层**那一道，而且只在它真的包住整段时剥：
       · 开头是 ```` ``` ```` 且结尾是 ```` ``` ````
       · 中间的内容原样保留（里面可能还有反引号）
     """
@@ -111,7 +112,7 @@ def strip_code_fence(text: str) -> str:
     body = t[nl + 1 :]
     end = body.rfind("```")
     if end < 0:
-        # ⚠️ 开头有围栏但**没有收尾** —— 这正是**被截断**的典型形状。
+        # ※ 开头有围栏但**没有收尾** —— 这正是**被截断**的典型形状。
         # 这里**不**擅自把它当完整内容，原样返回让上层的截断判据去处理。
         return text
     return body[:end].strip()
@@ -120,7 +121,7 @@ def strip_code_fence(text: str) -> str:
 def extract_text(payload: dict[str, Any]) -> str:
     """从响应里取正文。
 
-    ⚠️ 兼容 `message.content` 是**数组**的形状（多模态端点会那样回）。
+    ※ 兼容 `message.content` 是**数组**的形状（多模态端点会那样回）。
     """
     choices = payload.get("choices")
     if not isinstance(choices, list) or not choices:
@@ -152,7 +153,7 @@ def extract_text(payload: dict[str, Any]) -> str:
 class OpenAIClient:
     """一个不依赖第三方 HTTP 库的客户端。
 
-    ⚠️ 用 `urllib` 而不是 `requests`/`httpx`：本项目的依赖越少，评委
+    ※ 用 `urllib` 而不是 `requests`/`httpx`：本项目的依赖越少，评委
     「clone 下来就能跑」的成功率越高。而这里只需要一个 POST。
     """
 
@@ -176,10 +177,10 @@ class OpenAIClient:
             "max_tokens": max_tokens,
             "temperature": 0,
         }
-        # ⚠️ **不是** `if self.config.enable_thinking:` —— 见模块 docstring 三。
+        # ※ **不是** `if self.config.enable_thinking:` —— 见模块 docstring 三。
         if self.config.enable_thinking is not None:
             body["enable_thinking"] = self.config.enable_thinking
-            # ⚠️ **同一个开关，两种方言。**
+            # ※ **同一个开关，两种方言。**
             #
             # 实测（本机 Ollama + qwen3:8b）：只发 `enable_thinking: false`，
             # 模型**照样**把整个预算烧在思考上 —— Ollama 认的是 `think`，
@@ -190,7 +191,7 @@ class OpenAIClient:
             # 而只发一种的代价是：在另一种端点上一个字都不产出，且表现为
             # 「模型不会干活」——一个看起来像能力问题的配置问题。
             #
-            # ⚠️ 这里刻意**不**按端点判断该发哪种：那需要一张端点→方言的
+            # ※ 这里刻意**不**按端点判断该发哪种：那需要一张端点→方言的
             # 表，而表会随服务商更新失效，且失效是静默的。多发一个字段的
             # 代价（被忽略）远低于猜错的代价。
             body["think"] = self.config.enable_thinking
@@ -207,11 +208,11 @@ class OpenAIClient:
         reason = _pick_finish_reason(payload)
         text = extract_text(payload)
 
-        # ⚠️ **截断的判断在这里，而且优先于解析。**
+        # ※ **截断的判断在这里，而且优先于解析。**
         # 截断与「输出不合法」在 HTTP 层看起来一样（都是 200 + 一段文本），
         # 但处置完全不同：前者要改切批的预算，后者要改提示词或解析。
         if reason == "length":
-            # ⚠️ **两种截断的处置完全不同，所以要说清是哪一种。**
+            # ※ **两种截断的处置完全不同，所以要说清是哪一种。**
             #
             # 实测（qwen3:8b 走 Ollama）：思考模型会把整个 max_tokens 烧在
             # `reasoning_content` 上，`content` 一个字都没写就撞上限 ——
@@ -243,7 +244,7 @@ class OpenAIClient:
         if isinstance(usage, dict) and usage.get("completion_tokens") is not None:
             try:
                 if int(usage["completion_tokens"]) >= max_tokens:
-                    # ⚠️ 有些端点**不报** `finish_reason=length` 却把
+                    # ※ 有些端点**不报** `finish_reason=length` 却把
                     # completion_tokens 顶到上限。两条判据**都要** ——
                     # 只信 `finish_reason` 会漏掉这一类端点，
                     # 而症状是「输出莫名其妙缺一截」。
@@ -258,6 +259,21 @@ class OpenAIClient:
 
     def _post(self, body: dict[str, Any]) -> dict[str, Any]:
         url = self.config.base_url
+
+        # ※ **没配端点时抛 `ModelError`，不要让它走到 `urllib` 里。**
+        #
+        # 空 URL 会让 `urllib.request.Request` 抛裸的
+        # `ValueError: unknown url type: ''` —— 那不是这一族的错误，所以
+        # 上层「模型失败 ⇒ 机械行兜底」那条路**接不住它**：日报会崩，
+        # 而崩之前已经把「夜抄 · 生成日报」打印出去了。
+        # `daily` 那一侧挡了「没配」，`digest` 这一侧原来没挡 ——
+        # 同一个输入，一个入口出机械行日报，另一个吐 traceback。
+        if not url:
+            raise ModelError(
+                "还没配模型端点 —— 在 config/settings.toml 的 [llm] 段填 "
+                "base_url 与 model；不配也能出日报，但每一行都会是机械行。"
+            )
+
         data = json.dumps(body, ensure_ascii=False).encode("utf-8")
         headers = {"Content-Type": "application/json"}
         if self.config.api_key:
@@ -273,7 +289,7 @@ class OpenAIClient:
                 detail = e.read().decode("utf-8", errors="replace")[:400]
             except Exception:
                 pass
-            # ⚠️ 4xx 与 5xx 分开：4xx 多半是**配置错**（模型名、字段名），
+            # ※ 4xx 与 5xx 分开：4xx 多半是**配置错**（模型名、字段名），
             # 重试没有意义；5xx 可以重试。
             raise ModelError(
                 f"模型端点返回 {e.code}：{detail}",
@@ -288,7 +304,7 @@ class OpenAIClient:
                 retryable=True,
             ) from e
         except TimeoutError as e:
-            # ⚠️ **超时必须被包住。**
+            # ※ **超时必须被包住。**
             #
             # 实测：思考型模型 + 大 max_tokens 会让一次请求跑过 `timeout`，
             # 而 `urllib` 抛出的是**裸 `TimeoutError`** —— 它不在

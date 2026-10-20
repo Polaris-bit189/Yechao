@@ -1,6 +1,6 @@
 """时钟 —— 取当前时刻的**唯一**地方。
 
-⚠️ 领域层不许取当前时间（护栏钉这条）。它拿到的是一个 Unix 秒，算出那个秒
+※ 领域层不许取当前时间（护栏钉这条）。它拿到的是一个 Unix 秒，算出那个秒
 落在哪一天 —— 纯函数。
 
 这个类是在适配层：它 `import time`，而领域层不碰。
@@ -18,7 +18,7 @@ from yechao.domain.days import DEFAULT_TZ_OFFSET, Clock
 class SystemClock:
     """真实时钟。
 
-    ⚠️ 它是 `domain.days.Clock` 的**超集**：除了 `now()`，它还提供
+    ※ 它是 `domain.days.Clock` 的**超集**：除了 `now()`，它还提供
     `day_start` / `day_of` / `days_apart` 那些纯计算 —— 直接委托给
     那个 frozen dataclass。
 
@@ -35,7 +35,7 @@ class SystemClock:
     def now(self) -> int:
         """当前 Unix 秒。
 
-        ⚠️ 只有这里可以调 `time.time()`。测试里换成 `FixedClock`。
+        ※ 只有这里可以调 `time.time()`。测试里换成 `FixedClock`。
         """
         return int(time.time())
 
@@ -65,7 +65,7 @@ class SystemClock:
 class FixedClock:
     """固定时刻的时钟 —— 测试用。
 
-    ⚠️ 它存在的理由就是那条判据：**测试不许依赖「跑用例的那一刻是几号」**。
+    ※ 它存在的理由就是那条判据：**测试不许依赖「跑用例的那一刻是几号」**。
     没有它的话，一条关于「今天截止」的断言在 23:59 与 00:01 会得到不同结果，
     而那种失败看起来像「代码坏了」。
     """

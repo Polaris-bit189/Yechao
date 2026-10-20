@@ -20,13 +20,13 @@
 
 ## 为什么 `[settings]` 与 `[llm]` 单独一份
 
-导入导出（`/api/config/pack`）的 `keep_settings` 选项说得很明白：
-「**保留本机路径（[settings] 用本机这份，不采用包里的）**」。
-⇒ `[settings]` 里有**机器相关**的东西（QQ 库路径、数据目录），
+导入导出（`/api/config/export` / `/api/config/import`）的 `keep_settings` 选项说得很明白：
+「**保留本机路径（[settings] 这一节以本机文件为准，不导入包里的值）**」。
+⇒ `[settings]` 里有**机器相关**的东西（数据源目录、数据目录），
 它不该跟着配置包跑到另一台机器上。
 
-⚠️ 这正是那条红线的来源：「不要指引用户做一件做不到的事」
-—— 一份把 `qq_db_dir` 换成别台机器路径的配置，用户照着做会**连接超时**
+※ 这正是那条红线的来源：「不要指引用户做一件做不到的事」
+—— 一份把 `source_db_dir` 换成别台机器路径的配置，用户照着做会**连接超时**
 （不是报错，是超时，排查方向完全错）。
 """
 
@@ -40,7 +40,7 @@ from typing import Any
 
 from yechao.domain.errors import ConfigError
 
-#: 配置文件名。⚠️ **对外契约**（评委照 README 找这几个）。
+#: 配置文件名。※ **对外契约**（评委照 README 找这几个）。
 GROUPS_FILE = "groups.toml"
 PERSONS_FILE = "persons.toml"
 CATEGORIES_FILE = "categories.toml"
@@ -50,7 +50,7 @@ SETTINGS_FILE = "settings.toml"
 def _atomic_write(path: Path, text: str) -> None:
     """先写临时文件再改名。
 
-    ⚠️ `os.replace` 在同一文件系统内是原子的（Windows 上也成立）——
+    ※ `os.replace` 在同一文件系统内是原子的（Windows 上也成立）——
     这是这个手法能work 的前提。跨盘符会退化成「复制 + 删」，那就不是原子的
     了，所以临时文件**必须**建在目标同目录下。
     """
@@ -73,7 +73,7 @@ def _atomic_write(path: Path, text: str) -> None:
 def load_toml(path: Path) -> dict[str, Any]:
     """读一份 TOML。
 
-    ⚠️ **文件不存在与读不出来是两件事**：前者返回 `{}`（调用方去建默认），
+    ※ **文件不存在与读不出来是两件事**：前者返回 `{}`（调用方去建默认），
     后者**抛**。见模块 docstring。
     """
     if not path.exists():
@@ -90,7 +90,7 @@ def load_toml(path: Path) -> dict[str, Any]:
 def dumps_toml(data: dict[str, Any]) -> str:
     """把字典写成 TOML。
 
-    ⚠️ 手写而不是用 `tomli_w`：只为写三张扁平表引一个依赖不划算，而且手写
+    ※ 手写而不是用 `tomli_w`：只为写三张扁平表引一个依赖不划算，而且手写
     能**保证输出稳定**（键序固定）—— 那让「导入导出」的往返可测
     （同一份配置导出两次，字节相同）。
     """
@@ -119,9 +119,9 @@ def dumps_toml(data: dict[str, Any]) -> str:
 def _fmt(v: Any) -> str:
     """把一个值写成 TOML 字面量。
 
-    ⚠️ **列表要写成 TOML 数组**（`["a", "b"]`），不是 `str(list)`。
-    第一版漏了这一支，于是 `members = ["张三"]` 被写成了
-    `members = "['张三']"` —— 一个**字符串**。
+    ※ **列表要写成 TOML 数组**（`["a", "b"]`），不是 `str(list)`。
+    第一版漏了这一支，于是 `members = ["林小满"]` 被写成了
+    `members = "['林小满']"` —— 一个**字符串**。
 
     而它读回来的形状是一个 `str`，`groups()` 里 `isinstance(x, list)` 判假，
     于是名单变成空的。症状是 `names_checked: 0` —— 姓名脱敏**没查**，
@@ -135,7 +135,7 @@ def _fmt(v: Any) -> str:
     if isinstance(v, (int, float)):
         return str(v)
     if v is None:
-        # ⚠️ TOML 没有 null。用空串代替 —— 而**读回来时要记得它可能是空串**。
+        # ※ TOML 没有 null。用空串代替 —— 而**读回来时要记得它可能是空串**。
         return '""'
     if isinstance(v, (list, tuple)):
         return "[" + ", ".join(_fmt(x) for x in v) + "]"
@@ -161,7 +161,7 @@ class TomlConfigStore:
     def groups(self) -> list[Any]:
         """读群配置。
 
-        ⚠️ 键名 `id` / `name` / `tier` 是**对外契约**。
+        ※ 键名 `id` / `name` / `tier` 是**对外契约**。
         改了就失效 —— 用户的 `groups.toml` 会读不出来。
         """
         from yechao.domain.config_models import GroupConfig
@@ -178,13 +178,13 @@ class TomlConfigStore:
             if not isinstance(row, dict):
                 raise ConfigError(f"{self.groups_path} 第 {i + 1} 个群不是一张表")
             if "id" not in row:
-                # ⚠️ 缺 `id` 时**抛**而不是跳过 —— 跳过的症状是「我加了群
+                # ※ 缺 `id` 时**抛**而不是跳过 —— 跳过的症状是「我加了群
                 # 但它没被监视」，而用户完全不知道去哪查。
                 raise ConfigError(
                     f"{self.groups_path} 第 {i + 1} 个群没有 `id`。"
                     f"缺这一项时无法匹配消息，必须补上。"
                 )
-            # ⚠️ `members` 是**姓名脱敏的名单来源**。漏读它，姓名那一维
+            # ※ `members` 是**姓名脱敏的名单来源**。漏读它，姓名那一维
             # 就永远「没查」—— 而 `names_checked: 0` 在隐私页上看起来像
             # 「查过、没漏」。实测就是这个症状：dry-run 报「比对过 0 个」。
             members_raw = row.get("members") or []
@@ -206,7 +206,7 @@ class TomlConfigStore:
             {
                 "id": g.id, "name": g.name, "tier": g.tier,
                 "enabled": g.enabled,
-                # ⚠️ 空列表不写 —— TOML 里一个空数组会让文件读起来更吵，
+                # ※ 空列表不写 —— TOML 里一个空数组会让文件读起来更吵，
                 # 而不写与空数组在语义上相同（都是「没有名单」）。
                 **({"members": list(g.members)} if g.members else {}),
             }
@@ -227,19 +227,31 @@ class TomlConfigStore:
         rows = raw.get("person") or []
         if not isinstance(rows, list):
             raise ConfigError(f"{self.persons_path} 的 `[[person]]` 不是一个数组")
+        for r in rows:
+            # ※ 这个键**改过名**（`uin` → `account`）。旧文件要**说清怎么改**，
+            # 不能默默跳过 —— 默默跳过时 `persons()` 返回空表，而空表与
+            # 「这个人不在名单里」形状一样：症状是人物筛选与姓名脱敏都少一份
+            # 名单，且**不报错**。
+            if isinstance(r, dict) and "account" not in r and "uin" in r:
+                raise ConfigError(
+                    f"{self.persons_path} 里的键 `uin` 已经改名为 `account`"
+                    f"（见 README 的对外契约）。把 `uin =` 改成 `account =`，"
+                    f"或删掉这份文件重建。"
+                )
         return [
             PersonConfig(
-                uin=int(r["uin"]),
+                account=int(r["account"]),
                 label=str(r.get("label") or ""),
                 note=str(r.get("note") or ""),
             )
             for r in rows
-            if isinstance(r, dict) and "uin" in r
+            if isinstance(r, dict) and "account" in r
         ]
 
     def set_persons(self, persons: list[Any]) -> None:
         data = {"person": [
-            {"uin": p.uin, "label": p.label, "note": p.note} for p in persons
+            {"account": p.account, "label": p.label, "note": p.note}
+            for p in persons
         ]}
         _atomic_write(self.persons_path, dumps_toml(data))
 
@@ -272,11 +284,15 @@ class TomlConfigStore:
             if not isinstance(r, dict) or "slug" not in r:
                 continue
             slug = str(r["slug"])
+            # ※ **多出来的键要忽略，不是报错**。
+            # 旧版本的类目表里有 `icon`，用户手上的 `categories.toml` 可能
+            # 还带着它。上面那条「读不出来就抛」针对的是**读不出来的文件**
+            # （键名写错、TOML 语法坏了），不是**多出来的键** ——
+            # 一份旧配置不该让用户打不开自己的数据。
             cats.append(
                 Category(
                     slug=slug,
                     label=str(r.get("label") or slug),
-                    icon=str(r.get("icon") or ""),
                     desc=str(r.get("desc") or ""),
                 )
             )
@@ -285,7 +301,7 @@ class TomlConfigStore:
             raise ConfigError(f"{self.categories_path} 的 `[aliases]` 不是一张表")
         aliases = {str(k): str(v) for k, v in aliases_raw.items()}
         if not cats:
-            # ⚠️ 有配置文件但一个类目都没有 —— 这是**改坏了**，不是「用户
+            # ※ 有配置文件但一个类目都没有 —— 这是**改坏了**，不是「用户
             # 不想要类目」。抛出去，别默默用默认值。
             raise ConfigError(
                 f"{self.categories_path} 里一个类目都没有。"
@@ -296,7 +312,7 @@ class TomlConfigStore:
     def set_categories(self, data: Any) -> None:
         payload: dict[str, Any] = {
             "category": [
-                {"slug": c.slug, "label": c.label, "icon": c.icon, "desc": c.desc}
+                {"slug": c.slug, "label": c.label, "desc": c.desc}
                 for c in data.categories
             ]
         }
@@ -319,10 +335,10 @@ class TomlConfigStore:
     def llm(self) -> Any:
         """读模型设置。
 
-        ⚠️ 返回的 `enable_thinking` 是**三态**：
+        ※ 返回的 `enable_thinking` 是**三态**：
           · 文件里没有这个键 ⇒ `None`（= 不发这个字段）
           · 写的是 `false` / `true` ⇒ 那个值
-        这两件事在界面上看不出区别，报文里却是两个不同的东西。
+        这两种情况在配置页上看起来一样，发出去的请求体却不一样。
         """
         from yechao.domain.config_models import LlmConfig
 
@@ -342,7 +358,7 @@ class TomlConfigStore:
             "base_url": settings.base_url,
             "model": settings.model,
         }
-        # ⚠️ **`None` 时把键删掉**，而不是写一个 `null`（TOML 也没有 null）。
+        # ※ **`None` 时把键删掉**，而不是写一个 `null`（TOML 也没有 null）。
         # 「不发这个字段」在配置文件里的表示就是**没有这个键**。
         if settings.enable_thinking is not None:
             data["llm"]["enable_thinking"] = settings.enable_thinking
@@ -351,7 +367,7 @@ class TomlConfigStore:
     def cloud(self) -> Any:
         """读**云端**模型设置。
 
-        ⚠️ 与 `[llm]` 分开读。两段的语义不同：
+        ※ 与 `[llm]` 分开读。两段的语义不同：
         `[llm]` 看原文（本机），`[cloud]` 只看**脱敏后的条目**。
         合并成一段会让「这个地址收到的是什么」说不清。
         """
@@ -380,7 +396,7 @@ class TomlConfigStore:
     def nicknames(self) -> list[str]:
         """已知的成员昵称 —— 姓名脱敏的**名单来源**。
 
-        ⚠️ 这个名单来自配置（群成员昵称表），**不是**从消息里现攒的：
+        ※ 这个名单来自配置（群成员昵称表），**不是**从消息里现攒的：
         现攒的话，第一轮抽取时名单是空的 —— 而那时正是最需要脱敏的时候。
         """
         raw = self.settings()

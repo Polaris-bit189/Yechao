@@ -38,7 +38,7 @@
 而 JSONL 是纯文本、可 diff、可 `grep`、可手改 —— 一个「能被审计的审计」
 应该是透明的。放进 SQLite 会让它变成一坨二进制。
 
-⚠️ 副产品：**主库被删了，审计还在**。这正是要的 —— 它是独立证据。
+※ 副产品：**主库被删了，审计还在**。这正是要的 —— 它是独立证据。
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ SUFFIX = ".jsonl"
 
 #: 一条记录里**允许出现**的键。别的一律丢弃。
 #:
-#: ⚠️ **白名单而不是黑名单**：黑名单会在有人加新字段时静默放行 ——
+#: ※ **白名单而不是黑名单**：黑名单会在有人加新字段时静默放行 ——
 #: 而如果那个新字段是内容（`"text": ...`），它就一路写进了磁盘。
 #: 白名单要求每加一项都得显式写下「为什么这一项不泄漏」。
 ALLOWED_KEYS: frozenset[str] = frozenset(
@@ -96,7 +96,7 @@ class JsonlAuditLog:
     def record(self, entry: dict[str, Any], *, ts: int | None = None) -> None:
         """追加一条。
 
-        ⚠️ **过滤到白名单** —— 见 `ALLOWED_KEYS` 的注释。
+        ※ **过滤到白名单** —— 见 `ALLOWED_KEYS` 的注释。
         """
         import time
 
@@ -107,15 +107,15 @@ class JsonlAuditLog:
         path = self._path_for(stamp)
         path.parent.mkdir(parents=True, exist_ok=True)
         line = json.dumps(safe, ensure_ascii=False, sort_keys=True) + "\n"
-        # ⚠️ 追加写的原子性靠 O_APPEND：单行小于 PIPE_BUF 时，
-        # 追加写在同一文件系统上是原子的。审计行都远小于 4KB。
+        # ※ 追加写的原子性由 O_APPEND 保证：同一文件系统上，
+        # 只要单行不超过 PIPE_BUF 就不会被写花。审计行远小于 4KB。
         with path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(line)
 
     def read_all(self) -> list[dict[str, Any]]:
         """读全部审计记录。
 
-        ⚠️ **坏行跳过、不抛**：一份被手改坏的审计文件不该让隐私页整个打不开
+        ※ **坏行跳过、不抛**：一份被手改坏的审计文件不该让隐私页整个打不开
         —— 那会让用户以为「没有记录」，而真相是「读不出来」。
         坏行数**会被带出去**（`_bad`），让调用方能区分这两种情况。
         """
@@ -156,7 +156,7 @@ class JsonlAuditLog:
 class NullAuditLog:
     """一个什么都不记的归档 —— **只给测试用**。
 
-    ⚠️ 它存在是为了让「没接审计」这件事**显式**（测试里显式写
+    ※ 它存在是为了让「没接审计」这件事**显式**（测试里显式写
     `NullAuditLog()`），而不是让运行时默默变成一个 no-op。
     生产路径上不该出现它 —— 那会让隐私页永远显示「还没有出网记录」，
     而那个 0 读起来像「一切正常」。

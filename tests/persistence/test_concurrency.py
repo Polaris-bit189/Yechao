@@ -16,7 +16,7 @@
 它们**全是单线程**的。单线程下共享连接工作得很好。
 
 ⇒ 这个文件用真正的线程池去打，并且**断言 0 个失败**。
-⚠️ 单次可能碰巧全过（竞态本来就时灵时不灵），所以循环多轮。
+※ 单次可能碰巧全过（竞态本来就时灵时不灵），所以循环多轮。
 """
 
 from __future__ import annotations
@@ -41,12 +41,12 @@ def db(tmp_path):
         PendingMessage(msg_id=i, group_id=1, ts=1000 + i, sender="s", content=f"c{i}")
         for i in range(1, 8)
     ])
-    kinds = ["notice", "academic", "activity", "life", "secondhand", "lostfound", "job"]
+    kinds = ["todo", "attend", "know", "claim", "trade", "recruit"]
     items = [
         Item(
-            item_id=0, kind=kinds[i % len(kinds)], kind_label="", kind_icon="",
+            item_id=0, kind=kinds[i % len(kinds)], kind_label="",
             title=f"t{i}", detail=None, event_ts=1000 + i, deadline_ts=None,
-            group_id=1, group_name="", actor=None, actor_uin=None,
+            group_id=1, group_name="", actor=None, actor_account=None,
             place=None, amount=None, links=(), source_count=1, start_ts=None,
         )
         for i in range(1, 8)
@@ -57,7 +57,7 @@ def db(tmp_path):
 
 
 def test_共享连接在多线程下会炸_所以必须按线程隔离(db):
-    """⚠️ **这是那个 bug 的回归用例。**
+    """※ **这是那个 bug 的回归用例。**
 
     断言的是**行为**：用 `factory` 建出来的 store，在多线程下并发读
     **不能有任何一次失败**。
@@ -67,7 +67,7 @@ def test_共享连接在多线程下会炸_所以必须按线程隔离(db):
     """
     reader = SqliteStore(factory=lambda: sqlite_store.open_readonly(db))
 
-    slugs = ["notice", "academic", "activity", "life", "secondhand", "lostfound", "job"]
+    slugs = ["todo", "attend", "know", "claim", "trade", "recruit"]
 
     def one(slug: str) -> tuple[str, str | None]:
         try:
@@ -93,7 +93,7 @@ def test_共享连接在多线程下会炸_所以必须按线程隔离(db):
 
 
 def test_factory_模式下每个线程拿到不同连接(db):
-    """⚠️ 行为断言之外再钉一条结构：不同线程的连接对象必须不同。
+    """※ 行为断言之外再钉一条结构：不同线程的连接对象必须不同。
 
     这条是前一条的**解释**。只有前一条的话，有人可能用「加一把大锁」绕过
     （那样也能过，但把所有读串行化了）；这一条说明我们选的是**按线程隔离**
