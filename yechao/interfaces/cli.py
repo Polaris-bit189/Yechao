@@ -57,10 +57,11 @@ COMMANDS = (
 )
 
 #: 默认端口。
-#: ※ **Windows 有端口保留段**，8787 / 8899
-#: 可能落进去并报 `WinError 10013`。所以这里是**首选值**，
-#: 失败时会自动往上找一个能用的（见 `_serve`）。
-DEFAULT_PORT = 8787
+#: ※ 原值是 8787，换到 9000 有两个理由：一是它离 Windows 的保留段更远
+#: （本机实测保留段集中在 6171–8743 那一片，8787 正擦着上沿），二是 8787
+#: 常被别的开发工具占着。保留段**是会变的**（取决于系统状态与已装的软件），
+#: 所以这里仍然只是**首选值** —— 绑不上时自动往上找一个能用的（见 `_serve`）。
+DEFAULT_PORT = 9000
 
 USAGE = """\
 夜抄 · Nocturnal Notes
@@ -70,7 +71,7 @@ USAGE = """\
   python -m yechao ingest     从真实数据源读消息进库
   python -m yechao refine     本地模型抽取
   python -m yechao digest     生成日报
-  python -m yechao serve      起网页（默认 http://127.0.0.1:8787）
+  python -m yechao serve      起网页（默认 http://127.0.0.1:9000）
 
   python -m yechao ledger     查失败记账（哪一条消息为什么没进条目）
   python -m yechao cloud      云端二次处理（只发脱敏后的条目）
@@ -606,14 +607,18 @@ def _cmd_refine(args: Args) -> int:
         _say("  本地 Ollama 用户：先 `ollama serve`，再 `ollama pull qwen3:8b`。")
         _say()
         _say("  也可以不配 —— 网页仍可打开，但日报会是机械整理的。")
+        app.close()
         return 2
 
     _say(f"  端点 {llm.base_url}")
     _say(f"  模型 {llm.model}")
     _say()
 
-    outcome = extract_uc.run(app.extract_deps(), budget=args.limit or 200)
-    _report_extract(outcome, st)
+    try:
+        outcome = extract_uc.run(app.extract_deps(), budget=args.limit or 200)
+        _report_extract(outcome, st)
+    finally:
+        app.close()
 
     if outcome.ledger.count("batch_failed"):
         # ※ 有整批失败 ⇒ **非零退出码**。全成了才 0。
@@ -721,11 +726,13 @@ def _cmd_digest(args: Args) -> int:
     _say()
     if count == 0:
         _warn("没有生成任何日报 —— 先跑 `python -m yechao refine`")
+        app.close()
         return 1
     # ※ 报了**最后一次**的 run_id（这个循环最多跑 3 天，一天一轮）。
     _ledger_hint(st, outcome.run_id)
     _say()
     _say("下一步：python -m yechao serve")
+    app.close()
     return 0
 
 
@@ -796,9 +803,11 @@ def _cmd_cloud(args: Args) -> int:
     if outcome.failures:
         for f in outcome.failures[:3]:
             _fail(f"有一批失败：{f}")
+        app.close()
         return 1
     _say()
     _say("下一步：python -m yechao digest（会用上这些摘要）")
+    app.close()
     return 0
 
 
