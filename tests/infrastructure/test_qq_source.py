@@ -20,6 +20,7 @@ import ast
 import hashlib
 import hmac
 import os
+import pathlib
 import sqlite3
 import struct
 from datetime import datetime, timezone
@@ -393,6 +394,70 @@ def test_头部能认出加密库(加密库):
 def test_明文库不会被误认成加密库():
     head = 夹具库.open("rb").read(qq_ntdb.HEADER_SIZE)
     assert not qq_ntdb.looks_like_qqnt_library(head)
+
+
+def _build_profile_db(mapping: dict[str, tuple[int, str]]) -> bytes:
+    """造一份**同形**的 `profile_info.db`（只要解析用到的那三列）。"""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        f = pathlib.Path(d) / "p.db"
+        con = sqlite3.connect(str(f))
+        con.execute(
+            'CREATE TABLE "profile_info_v6" ("1000" TEXT, "1002" INTEGER, "20002" TEXT)'
+        )
+        con.executemany(
+            'INSERT INTO "profile_info_v6" VALUES (?,?,?)',
+            [(uid, uin, name) for uid, (uin, name) in mapping.items()],
+        )
+        con.commit()
+        con.close()
+        return f.read_bytes()
+
+
+def test_资料库补上发送者的账号(tmp_path, monkeypatch):
+    """uid → QQ 号由**同目录的** `profile_info.db` 补上，而两个库共用**一把**钥匙。
+
+    ※ 两件事一起验，因为它们是一处的两面：一个账号下每个库各扫一遍内存的话，
+    除了白花十秒，还会让「两把钥匙万一不一致」这种状态无声地发生 —— 症状是
+    「资料库读不出来，消息库好好的」，看起来像资料库坏了。
+    ※ 账号**不是**由 uid 哈希出来的：哈希会**编一个不存在的号**，而那个数字会被
+    下游当成一个真实的人（见 `qq_parse.parse_library` 的说明）。
+    """
+    key = b"yechao-qq-test01"
+    msg = tmp_path / "nt_msg.db"
+    msg.write_bytes(
+        _build_encrypted_library(
+            _to_reserved_layout(夹具库.read_bytes(), 保留字节), key, reserve=保留字节
+        )
+    )
+    prof = tmp_path / "profile_info.db"
+    prof.write_bytes(
+        _build_encrypted_library(
+            _to_reserved_layout(
+                _build_profile_db({"u_合成700101": (17700001001, "班长孙予棠")}),
+                保留字节,
+            ),
+            key,
+            reserve=保留字节,
+        )
+    )
+
+    次数 = []
+
+    def 假找钥匙(path, **kw):
+        次数.append(path.name)
+        return key, detect_params(path, key)
+
+    monkeypatch.setattr(qq_ntdb, "find_key", 假找钥匙)
+    msgs = 造源(msg).read()
+
+    assert 次数 == ["nt_msg.db"], f"钥匙应当只取一次，实际取了 {次数}"
+    有号的 = [m for m in msgs if m.actor_account is not None]
+    assert len(有号的) == 1
+    assert 有号的[0].actor_account == 17700001001
+    # 没有资料库记录的那些：**如实置 None**，不是 0
+    assert all(m.actor_account is None for m in msgs if m.actor_account != 17700001001)
 
 
 def test_按页解密能还原明文(加密库):
