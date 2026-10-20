@@ -295,6 +295,27 @@ def test_模型看过却没抽出东西的下一轮不再送(store) -> None:
     assert second.batches_total == 0, "看过的那一条第二轮又被送进去了"
 
 
+def test_预算不够时先跑最新的(store) -> None:
+    """※ 预算不够跑完全部批次时，先跑**最新的**那一批。
+
+    观察到什么现象：切批的输出是「按群号、群内按时间升序」—— 那对切批是对的，
+    但它同时决定了「预算先花在哪」。一个刚接上的真实来源可以带进几十万条历史
+    （本机 QQ：49.2 万条），于是头 200 批全是几个月前的消息，今天的排在最后。
+    实测：接上 QQ 之后第一批抽出来的是 **7 月 17 日**的消息。
+
+    而本产品的产出是按天的日报 —— 今天的通知晚几小时进库，日报就是空的，
+    而界面上它与「今天群里很安静」是同一句话。
+    """
+    for i in range(1, 4):
+        _seed(store, (i,), group=GROUP + i - 1)   # ts 递增
+    extract_uc.run(_deps(store, _DeadModel()), budget=1)
+
+    assert [e.kind for e in store.entries_of_message(3)] == ["batch_failed"], (
+        "预算花在了最老的那一批上 —— 今天的通知会排在几个月前的消息后面"
+    )
+    assert [e.kind for e in store.entries_of_message(1)] == ["unprocessed"]
+
+
 def test_没跑到的下一轮还会再跑(store) -> None:
     """※ 与上一条**相反**的那一半：预算没跑到的**必须**留下。
 
@@ -305,8 +326,8 @@ def test_没跑到的下一轮还会再跑(store) -> None:
         _seed(store, (i + 1,), group=GROUP + i)   # 不跨群 ⇒ 一批一个群
 
     extract_uc.run(_deps(store, _DeadModel()), budget=1)
-    # 第 1 批跑了（失败），第 2、3、4 批没跑到
-    assert [e.kind for e in store.entries_of_message(4)] == ["unprocessed"]
+    # 最新的一批跑了（失败），较早的没跑到
+    assert [e.kind for e in store.entries_of_message(1)] == ["unprocessed"]
 
     second = extract_uc.run(_deps(store, _DeadModel()), budget=1)
     assert second.batches_total > 0, (
@@ -361,7 +382,9 @@ def test_没跑到的消息也留下账(store) -> None:
     outcome = extract_uc.run(_deps(store, _DeadModel()), budget=1)
 
     assert outcome.batches_total == 5, outcome.batches_total
-    later = [e for e in store.entries_of_message(5) if e.kind == "unprocessed"]
+    # ※ **先跑的是最新的一批**（见 `extract.run` 里「新消息优先」那一段），
+    # 所以没跑到的是较早的那些 —— 这里查第 1 条（最老）。
+    later = [e for e in store.entries_of_message(1) if e.kind == "unprocessed"]
     assert later, "没跑到的消息没有账 —— 那一问就答不出来"
     assert later[0].reason == "budget"
     assert later[0].batch_no and later[0].batch_no >= 2
@@ -402,7 +425,13 @@ def test_有产出的一轮里条目与账都在(store) -> None:
 
     `test_跑一轮之后账在库里_且按消息查得到` 用的是「模型全挂了」那一轮 ——
     它证明不了「有产出时账也在」。这一条补上：一条消息产出条目、
-    另一条所在的那一批回空数组 ⇒ 条目 1 条、账 1 笔，**两者同一次调用落库**。
+    另一条所在的那一批**模型回了合法的 `[]`** ⇒ 条目 1 条、账 1 笔，
+    **两者同一次调用落库**。
+
+    ※ 那笔账是 `no_item`（「看过了，这一批里没有要办的事」），**不是**
+    `batch_failed`。合法的 `[]` 与「解析不出 JSON」是两件事：前者这一批跑成了，
+    后者要重试。混成一个的症状实测过 —— 接上真实 QQ 群之后，普通闲聊被模型
+    老实回 `[]`，却被记成失败，于是那一轮永远「有失败」、那些消息永远重发。
     """
     _seed(store, (1,), group=GROUP)
     _seed(store, (2,), group=GROUP + 1)
@@ -414,7 +443,7 @@ def test_有产出的一轮里条目与账都在(store) -> None:
     assert run is not None
     assert run.produced == 1
     entries = store.entries_of_run(run.run_id)
-    assert [e.kind for e in entries] == ["batch_failed"], (
+    assert [e.kind for e in entries] == ["no_item"], (
         "空数组那一批的账没落 —— 有产出的那一轮里，账被吞了"
     )
     assert entries[0].msg_id == 2

@@ -143,8 +143,8 @@ class ExtractOutcome:
 # ── 解析模型输出 ────────────────────────────────────────────────────
 
 
-def parse_candidates(raw: str) -> list[ExtractionCandidate]:
-    """把模型输出解析成候选条目。
+def parse_reply(raw: str) -> tuple[bool, list[ExtractionCandidate]]:
+    """把模型输出解析成候选条目，并告诉你**有没有解析出 JSON**。
 
     ※ **模型不是每次都把 JSON 裸着给**：
     同一段输入两次跑，一次裸、一次包在 Markdown 代码块里。不处理的话症状是
@@ -156,6 +156,17 @@ def parse_candidates(raw: str) -> list[ExtractionCandidate]:
 
     ※ 与「被截断」是两件事：截断在 `ModelClient` 那一层就抛
     `ModelTruncated` 了（靠 `finish_reason`），不会走到这里。
+
+    ## 返回值的第一项：**有没有解析出 JSON**
+
+    ※ 原来这里只返回一个空列表，于是两件事被压成了同一个形状 ——
+    **模型回了一个合法的 `[]`**（「这一批里没有要办的事」）与**模型回了一段
+    散文**（解析不出 JSON）。两者的下一步**相反**：前者这一批就跑成了，
+    后者要重试。
+
+    压在一起的症状（实测，接上真实 QQ 群之后）：一批普通闲聊被预筛留着，模型
+    老实回 `[]`，而管线把它记成 `parse_empty` **失败** ⇒ 那一轮「有失败」、
+    退出码非零，而那些消息**每一轮都被重新送去模型**，永远不会判完。
     """
     import json
 
@@ -178,7 +189,7 @@ def parse_candidates(raw: str) -> list[ExtractionCandidate]:
 
     data = _loads_first_json(text)
     if data is _NOTHING:
-        return []
+        return False, []
 
     # 允许顶层是 `{"items": [...]}` 或直接是 `[...]`
     if isinstance(data, dict):
@@ -189,7 +200,7 @@ def parse_candidates(raw: str) -> list[ExtractionCandidate]:
         else:
             data = [data]
     if not isinstance(data, list):
-        return []
+        return True, []
 
     out: list[ExtractionCandidate] = []
     for row in data:
@@ -212,7 +223,17 @@ def parse_candidates(raw: str) -> list[ExtractionCandidate]:
                 amount=_opt_str(row.get("amount")),
             )
         )
-    return out
+    return True, out
+
+
+def parse_candidates(raw: str) -> list[ExtractionCandidate]:
+    """只要候选条目、不关心「有没有 JSON」时的入口。
+
+    ※ 它是 `parse_reply` 的一层薄包装，**不是第二份实现**：调用点还在用它
+    （用例里大多是「这段输出能解析出哪几条」），拆掉会让一批与本次改动无关的
+    用例跟着改。判据只有一处，在这里转发过去。
+    """
+    return parse_reply(raw)[1]
 
 
 
@@ -417,6 +438,25 @@ def run(
 
     # ── 4. 切批 ──────────────────────────────────────────────────
     batches = chunking.chunk(batch_input)
+    # ※ **预算不够跑完全部批次时，先跑最新的**。
+    #
+    # 观察到什么现象：`chunk()` 的输出是「按群号、群内按时间**升序**」——
+    # 那对切批是对的（同一批要连续），但它同时决定了「预算先花在哪」。
+    # 一个刚接上的真实来源可以带进几十万条历史（本机 QQ：49.2 万条），
+    # 于是头 200 批全是**几个月前**的消息，而今天的排在最后。
+    # 实测：接上 QQ 后第一批抽出来的是 7 月 17 日的消息。
+    #
+    # 而本产品的产出是**按天的日报** —— 今天的通知晚三小时进库，日报就是空的，
+    # 而界面上它与「今天群里很安静」是同一句话。
+    #
+    # ⇒ 判据：**新消息优先**。旧消息在预算有余量时照样会跑到（它们是同一个
+    # `pending` 集合里的），只是排在后面；而「旧消息可能一直排不上」是可接受的
+    # —— 它们已经不在任何一天的日报里了。
+    #
+    # ※ 排序放在这里而不是 `chunk()` 里：切批管的是一批**装哪些**，
+    # 这里管的是**先跑哪些**。混在一起会让「批的顺序」有两个来源。
+    # 用批内**最新**的那条排：一批跨一个时间窗，按最新那条才算「这批有多新」。
+    batches.sort(key=lambda b: max(m.ts for m in b.messages), reverse=True)
     outcome.batches_total = len(batches)
 
     names = deps.config.nicknames()
@@ -705,7 +745,7 @@ def _run_batch(
     outcome.sent_to_model += len(batch.messages)
 
     # ── 解析 + 回连 + 核验 ──
-    candidates = parse_candidates(raw)
+    found_json, candidates = parse_reply(raw)
     if not candidates:
         # ※ **「解析出 0 条」不等于「失败」。**
         #
@@ -713,18 +753,37 @@ def _run_batch(
         # 这种），`with_context` 补进来只是为了让模型看得到上下文。
         # 模型对这样一批回 `[]` 是**正确的**。
         #
-        # 判据：这一批里**有没有一条是预筛保留的**。
-        #   · 有 ⇒ 模型该产出却没产出，是真失败（原因仍然指向提示词 / 解析）
-        #   · 没有 ⇒ 它本来就不该产出，这一批跑成了
+        # 判据有两条。先看这一批里**有没有一条是预筛保留的**：
+        #   · 没有 ⇒ 它本来就不该产出（全是邻居），这一批跑成了
+        #   · 有 ⇒ 再看模型**是怎么回的空**：
+        #       – 回了**合法的 `[]`** ⇒ 模型看过了，这一批里没有要办的事。
+        #         记 `no_item`（= 判完，下一轮不再送），**不是失败**。
+        #       – 回了**散文 / 半截 JSON** ⇒ 解析不出来，**是真失败**，下一轮重试。
+        #
+        # ※ 把这两者混成一个（都记 `parse_empty` 失败）的症状实测过：接上真实
+        # QQ 群之后，一批普通闲聊被预筛留着、模型老实回 `[]`，于是那一轮报
+        # 「有失败」、退出码非零，而那些消息每一轮都被重新送去模型 ——
+        # 既判不完，也永远不会产出条目。
         #
         # 那些邻居「为什么没进条目」已经有 `filtered` / `spam` 的账（预筛那一步
         # 就记了），不需要在这里再记一笔。
-        if any(m.msg_id in (must_produce or set()) for m in batch.messages):
-            # ※ 与「模型调用失败」分开：原因码不同，下一步也不同
-            # （一个是查端点，一个是查提示词 / 解析）。
-            _record_batch_failed(outcome, batch, batch_no, reason="parse_empty")
-            return False
-        return True
+        keep = {
+            m.msg_id for m in batch.messages if m.msg_id in (must_produce or set())
+        }
+        if not keep:
+            return True
+        if found_json:
+            for m in batch.messages:
+                if m.msg_id in keep:
+                    outcome.ledger.record(
+                        NO_ITEM, msg_id=m.msg_id, group_id=m.group_id,
+                        batch_no=batch_no, reason="empty",
+                    )
+            return True
+        # ※ 与「模型调用失败」分开：原因码不同，下一步也不同
+        # （一个是查端点，一个是查提示词 / 解析）。
+        _record_batch_failed(outcome, batch, batch_no, reason="parse_empty")
+        return False
 
     local_year = _year_of(deps.clock.now())
     #: 这一批**之前**已经产出的来源条数 —— 用它切出「这一批产出的」。
