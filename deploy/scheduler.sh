@@ -46,7 +46,11 @@ import time
 
 raw = sys.argv[1]
 parts = raw.split(":")
-if len(parts) != 2 or not all(p.isdigit() for p in parts):
+if (
+    len(parts) != 2
+    or len(parts[0]) != 2
+    or not all(p.isdigit() for p in parts)
+):
     raise SystemExit(
         f"YECHAO_DAILY_AT 要写成 HH:MM（24 小时制），现在是 {raw!r}"
     )

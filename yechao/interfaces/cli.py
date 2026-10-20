@@ -1117,7 +1117,9 @@ def _cmd_metrics(args: Args) -> int:
     st = _settings_from(args)
     try:
         app = make_app_or_explain(settings=st)
-    except SystemExit:
+    except SystemExit as e:
+        # 配置坏了要说出来 —— 它与「还没跑 refine」不是同一句话。
+        _fail(str(e))
         app = None
 
     # ※ **不要用 `st.db_path.exists()` 判「跑过 refine 没有」。**
@@ -1135,7 +1137,9 @@ def _cmd_metrics(args: Args) -> int:
             exp = {m: expects.get(m) for m in mids}
             fields = sum(
                 1
-                for cond in (it.detail, it.place, it.amount, it.deadline_ts, it.start_ts)
+                # `detail` 不在这里：它是模型的自由文本，没有任何判据核过它，
+                # 把它算进「已核验的字段」会把幻觉率往下摊薄。
+                for cond in (it.place, it.amount, it.deadline_ts, it.start_ts)
                 if cond
             )
             unsupported = sum(
@@ -1524,6 +1528,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         # ※ **不静默忽略一个「删库」开关**。给了它却没生效，用户会以为库已经
         # 重建过了 —— 那正是「失败看起来像成功」。
         _fail(f"--fresh 只对 demo 有意义（当前命令：{args.command}）")
+        return 2
+
+    if args.dry_run and args.command != "cloud":
+        # ※ 同 `--fresh` / `--source`：**_dry-run 是个「不发请求」的开关**，
+        # 静默忽略它的后果是「用户以为什么都没发，实际全跑了」。
+        _fail(f"--dry-run 只对 cloud 有意义（当前命令：{args.command}）")
         return 2
 
     if args.source and args.command != "ingest":

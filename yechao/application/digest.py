@@ -184,9 +184,12 @@ def run(
     # ※ 机械行**按条记账**（主体是条目 id）：它答的是「**这一条**条目
     # 为什么在日报里没有模型写的版本」。与 refine 那一侧按条记同一个取向
     # —— 「每一条都能回答为什么」这句话对条目也成立。
-    for it in items:
-        if it.item_id not in summaries:
-            outcome.ledger.record(LINE_MECHANICAL, item_id=it.item_id)
+    # 只记**日报里真的有的行**：超出单篇上限、没进本篇的条目不该记成
+    # 「这一行是机械行」—— 它们没有行。那一条由 `draft.omitted` 负责说。
+    for sec in draft.sections:
+        for ln in sec.lines:
+            if not ln.by_model:
+                outcome.ledger.record(LINE_MECHANICAL, item_id=ln.item_id)
 
     # ※ 模型一行都没给（或者根本没跑模型）时，`stats` 要能说明这件事。
     if outcome.failure and not stats:

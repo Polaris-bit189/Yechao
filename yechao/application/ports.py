@@ -84,10 +84,11 @@ class MessageRepository(Protocol):
     def pending_messages(
         self, *, since: int | None = None, until: int | None = None
     ) -> list[Any]:
-        """取待抽取的消息。
+        """取窗口内的消息（按 `ts` 过滤）。
 
-        ※ **必须跳过已经被软删的**。
-        否则用户删掉的条目会在下一轮被重新抽出来。
+        ※ **去重不在这里**：哪些消息已经处理过，由 `covered_msg_ids()`
+        回答 —— 它把**被软删条目的来源**也算作已处理，所以删掉的条目
+        不会被下一轮抽回来。两个方法各答一件事，调用方两样都要问。
         """
         ...
 

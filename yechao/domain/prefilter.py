@@ -177,7 +177,9 @@ def is_pure_ack(text: str) -> bool:
     if stripped in _ACK_WORDS:
         return True
     rest = stripped
-    for _ in range(8):
+    # 每轮至少吃掉一个词，所以最多 len(stripped) 轮 —— 有界，且不会因为
+    # 堆叠得太长而在中途放弃（「好的」连写九遍仍然是纯应答）。
+    for _ in range(len(stripped) + 1):
         if not rest:
             return True
         for w in _ACK_LONGEST_FIRST:

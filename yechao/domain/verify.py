@@ -396,9 +396,10 @@ def gate(
     设卡的话，绕过去太容易。
 
     处置按危害分档：
-      · `deadline_ts` / `start_ts` 找不到依据 ⇒ **清成 None**（危害最大：
-        用户跑错时间、错过截止）
-      · `place` / `amount` ⇒ 找不到依据时**标记**，不清（理由见各自 docstring）
+      · `deadline_ts` / `start_ts` / `place` 找不到依据 ⇒ **清成 None**
+        （时间错了错过截止，地点错了白跑一趟）
+      · `amount` ⇒ 保留原值 —— 它错了上下文会提醒（「30 元」在标题旁边
+        本来就不协调），清掉反而丢了信息
     """
     verdicts = [
         verify_deadline(source, item.deadline_ts, local_year=local_year, tz_offset=tz_offset),
