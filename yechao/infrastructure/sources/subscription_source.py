@@ -17,12 +17,25 @@
 | 没配什么 | 抛 | 用户下一步 |
 |---|---|---|
 | 协议没签 | `consent._ConsentRequired`（`ConfigError`） | 读协议、签 |
-| 登录态没配 | `ConfigError` | 配 `YECHAO_<站>_COOKIE` |
+| 登录态没配 | `ConfigError` | 配 `YECHAO_<站>_COOKIE`，或开浏览器登录态 |
 | 登录态过期 / 被拒 | `_CredentialRejected`（`SourceUnavailable`） | 重新拷一份 cookie |
 
 ※ 第三种与第二种**必须形状不同**：前者要改的是**配置**（用法错，退出码 2），
 后者是「配了但不work」—— 要查的是那个 cookie 还有没有效。混成一种，
 用户会在「我明明配了」和「你根本没配」之间来回看。
+
+## 登录态从哪来（三条，按优先级）
+
+  1. `YECHAO_<站>_COOKIE`（环境变量）—— 用户**显式**给的那一份，永远最优先
+     （自动读到的可能是同一个浏览器里的**另一个**账号）。
+  2. **本机浏览器的登录态**（`browser_cookies`）—— 用户在 Edge / Chrome /
+     Firefox 里登录一次，之后自动。**默认关**，要在 `sources.toml` 的
+     `[subscription]` 里写 `browser_cookies = true` —— 读用户的浏览器 profile
+     是一件要显式同意的事，与签协议同一条判据。
+  3. `YECHAO_<站>_USER` / `..._PASS`（环境变量）—— 只在内存里换一次会话。
+
+※ 「自动」这个词的现实定义见上面：**不是零配置**，是「配一次，之后不用管」。
+浏览器那条路把「每次过期都要重新拷一份」这件事去掉了。
 
 ## 凭据怎么存（三条，都是硬约束）
 
@@ -101,9 +114,10 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode, urljoin, urlsplit
 
 from yechao.domain.errors import ConfigError, SourceUnavailable
+import yechao.infrastructure.sources.browser_cookies as browser_cookies
 import yechao.infrastructure.sources.consent as consent
 from yechao.infrastructure.sources._common import (
     #: 配置目录的环境变量名。**必须与 `bootstrap.Settings.from_env` 一致**。
@@ -243,15 +257,89 @@ def _redact(text: str, secrets: Iterable[str]) -> str:
     return out
 
 
-def _credential(site: _Site) -> _Credential | None:
-    """从环境变量读这一站的登录态。**没配返回 `None`**。
+#: `sources.toml` 的 `[subscription]` 里那个「去读本机浏览器登录态」的开关。
+#:
+#: ※ **默认关**，而且**只有配置文件这一个开关**（没有环境变量版）。两条理由：
+#:   1. 「读你的浏览器 profile」是一个**长期**的决定，不是一次性的意图 ——
+#:      它和 `target` / `site` 同类，写在同一个块里才看得见（`git diff` 里
+#:      也看得见）。一次性的意图有 `YECHAO_<站>_COOKIE` 那条路。
+#:   2. 一个环境变量的开关会让**用例**变成「看跑它的那台机器上有没有设这个
+#:      变量」—— 而 `tests/infrastructure/test_subscription_source.py` 的夹具
+#:      只会删这一站的凭据变量，删不到一个还不存在的名字。
+BROWSER_COOKIES_KEY = "browser_cookies"
 
-    优先级：会话凭据（cookie）> 账号密码。理由见模块 docstring：
-    cookie 是首选那条路 —— 它可长期存、且不含口令。
+_TRUE = frozenset({"1", "true", "yes", "on"})
+_FALSE = frozenset({"0", "false", "no", "off"})
+
+
+def _as_bool(value: Any, *, where: str) -> bool:
+    """把配置里的开关解成 bool。**认不出来就抛**，不猜。
+
+    ※ 猜的症状是「我明明写了 browser_cookies = false，它还是去读了我的
+    浏览器」—— 而那是**读用户的浏览器 profile**，猜错不是小事。
+    """
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in _TRUE:
+        return True
+    if text in _FALSE:
+        return False
+    raise ConfigError(
+        f"{where} = {value!r} 认不出来 —— 要 true / false"
+        f"（也可以写 1 / 0、yes / no）。"
+    )
+
+
+def _browser_cookies_enabled() -> bool:
+    """要不要去读本机浏览器的登录态。**默认关** —— 见 `BROWSER_COOKIES_KEY`。"""
+    return _as_bool(
+        _settings_table().get(BROWSER_COOKIES_KEY),
+        where=f"{SOURCES_FILE} 的 [subscription] {BROWSER_COOKIES_KEY}",
+    )
+
+
+def _cookie_from_browser(site: _Site, host: str) -> str:
+    """从本机浏览器里取这一站的登录态。**取不到返回空串**（不是抛）。
+
+    ※ 先问**目标 URL 的那个域**：一个站可能认多个域名（微博认 `weibo.com`
+    与 `weibo.cn`），而 cookie 是**按域作用域**的 —— 把 `weibo.com` 的凭据
+    发给 `weibo.cn` 既是错的，也是一次跨域泄漏。目标域问不到，再按这个站
+    列出的域挨个问，取第一个有的。
+
+    ※ 它**不吞**任何东西：真的取不到时原因在 `browser_cookies.explain` 里，
+    由 `_credential_hint` 打给用户看。
+    """
+    order = ([host] if host else []) + [h for h in site.hosts if h != host]
+    for candidate in order:
+        found = browser_cookies.cookies_for(candidate)
+        if found:
+            return found
+    return ""
+
+
+def _credential(site: _Site, *, host: str = "") -> _Credential | None:
+    """读这一站的登录态。**没配返回 `None`**。
+
+    优先级：环境变量 > 浏览器登录态 > 账号密码。理由：
+      · 环境变量在最前 —— 它是用户**显式**给的那一份，要能盖掉自动读到的
+        （自动读到的可能是同一个浏览器里的**另一个**账号）。
+      · 浏览器在账号密码之前 —— 见模块 docstring：cookie 是首选那条路，
+        它可长期存、且不含口令。
+
+    ※ `host` 是目标 URL 的域名，用来在浏览器里挑**对的那个域**（见
+      `_cookie_from_browser`）。留空时按这个站列出的域挨个问。
     """
     cookie = (os.environ.get(site.cookie_env) or "").strip()
     if cookie:
         return _Credential(site=site.key, kind="cookie", cookie=cookie)
+
+    if _browser_cookies_enabled():
+        from_browser = _cookie_from_browser(site, host)
+        if from_browser:
+            return _Credential(site=site.key, kind="cookie", cookie=from_browser)
 
     user = (os.environ.get(site.user_env) or "").strip()
     password = os.environ.get(site.pass_env) or ""
@@ -262,7 +350,7 @@ def _credential(site: _Site) -> _Credential | None:
     return None
 
 
-def _credential_hint(site: _Site) -> str:
+def _credential_hint(site: _Site, *, host: str = "") -> str:
     """没配登录态时给用户照做的一段话。
 
     ※ 它复述**这一站**的 robots 结论与要拷哪个字段 —— 「我该拷什么」
@@ -270,16 +358,39 @@ def _credential_hint(site: _Site) -> str:
     """
     fields = "、".join(site.session_fields) or "（这一站没有列出来）"
     return (
-        f"{site.label} 的登录态没有配。给它一份 —— 二选一：\n"
+        f"{site.label} 的登录态没有配。给它一份 —— 三选一：\n"
         f"  · 会话凭据（**首选**，可长期存）：\n"
         f"      {site.cookie_env}=<浏览器里登录之后拷出来的 cookie>\n"
         f"    这个站的登录态是 {fields} 这几项。\n"
+        f"{_browser_hint(site, host)}"
         f"  · 账号密码（**只在内存里用一次**，不进配置文件）：\n"
         f"      {site.user_env}=<账号>\n"
         f"      {site.pass_env}=<口令>\n"
         f"※ 为什么必须要一个：{site.public_note}\n"
         f"※ 这一站的 robots：{site.robots_verdict}"
     )
+
+
+def _browser_hint(site: _Site, host: str) -> str:
+    """「浏览器登录态」那一条。**开着与没开给的话不一样** —— 见下。
+
+    ※ 没开时说的是「怎么开」；开着时说的是「**为什么没读到**」
+    （`browser_cookies.explain`）。后者才是要紧的：「浏览器正开着、库被锁住」
+    与「你根本没在那个浏览器里登录过」是两件事，下一步完全不同 ——
+    而它们**都**表现为「没有登录态」。混成一句，用户会去查错方向。
+    """
+    if not _browser_cookies_enabled():
+        return (
+            f"  · 或者：在**本机浏览器**里登录一次，让本工具自己去读"
+            f"（不必手工拷）：\n"
+            f"      {SOURCES_FILE} 的 [subscription] 里写"
+            f" {BROWSER_COOKIES_KEY} = true\n"
+            f"    ※ 默认**关** —— 读你的浏览器 profile 是一件要显式同意的事"
+            f"（与签协议同一条判据）。\n"
+        )
+    order = ([host] if host else []) + [h for h in site.hosts if h != host]
+    why = browser_cookies.explain(order[0]) if order else "（这个站没列出域名）"
+    return f"  · 浏览器登录态：**开着**，但这次没读到 —— {why}\n"
 
 
 # ── 目标 ────────────────────────────────────────────────────────────
@@ -312,7 +423,8 @@ def _settings_table() -> dict[str, Any]:
             '  site = "xiaohongshu"\n'
             '  mode = "account"\n'
             '  target = "@某个账号"\n'
-            "  group_id = 820000007"
+            "  group_id = 820000007\n"
+            f"  {BROWSER_COOKIES_KEY} = true   # 可选：去读本机浏览器的登录态"
         ),
     )
 
@@ -851,9 +963,12 @@ def build_subscription_source() -> _SubscriptionSource:
         return _SubscriptionSource(target)
 
     consent.check_consent()
-    credential = _credential(target.site)
+    # ※ 从**目标 URL** 上取域名交给凭据解析：浏览器里一个站可能有好几个域的
+    #   cookie（微博认 weibo.com 与 weibo.cn），要挑的是**这一次要访问的那个**。
+    host = urlsplit(target.url).hostname or ""
+    credential = _credential(target.site, host=host)
     if credential is None:
-        raise ConfigError(_credential_hint(target.site))
+        raise ConfigError(_credential_hint(target.site, host=host))
 
     if credential.kind == "password":
         # ※ 账号密码那条路：**当场换成会话凭据**，口令用完即弃。

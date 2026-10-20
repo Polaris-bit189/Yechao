@@ -28,9 +28,18 @@ dependencies = [
 mysql = ["pymysql>=1.1"]
 redis = ["redis>=5"]
 
+# ※ 读 Chromium 系浏览器（Edge / Chrome）的登录态要它（AES-256-GCM）。
+# 同一条判据：默认那一份必须能跑通三步复现，而「读浏览器登录态」是可选功能
+# —— `browser_cookies` 里**延迟导入**它，没装时报错并说清怎么装，不回落成
+# 「读不到」（那会让你以为浏览器里根本没登录）。Firefox 的库不加密，用不上它。
+browser = ["cryptography>=42"]
+
 dev = [
     "pytest>=8",
     "httpx>=0.27",
+    # ※ 测试要**真的**跑一遍解密链路（用已知密钥造一份最小 cookie 库），
+    # 所以开发环境要有它。它仍然**不在** `dependencies` 里 —— 红线没动。
+    "cryptography>=42",
 ]
 
 [project.scripts]

@@ -589,6 +589,67 @@
   mask-image: linear-gradient(0deg, #000 0 52%, transparent 100%);
 }
 
+/* ── 角落的朱印与符箓 ────────────────────────────────────────
+ *
+ * 位置挑在**内容区右侧的留白**里 —— 卡片盖不到那儿。上一版把远山画在
+ * 背景层，有内容的页面上被卡片压掉大半，等于没画；这一处不重蹈覆辙。
+ *
+ * 颜色是**朱砂**：不从 `--accent` 取（各主题不同色），而是从红那一族混出来。
+ * 印章就该是红的 —— 那是物件的属性，不是主题的气质。 */
+.sky__corner {
+  position: absolute;
+  right: 3.5%;
+  bottom: 15%;
+  display: flex;
+  align-items: flex-end;
+  gap: 13px;
+  color: color-mix(in srgb, var(--danger) 72%, var(--bg));
+  opacity: 0.34;
+}
+
+.sky__talisman {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+.sky__talisman--a {
+  width: 26px;
+  height: 92px;
+  transform: rotate(-4deg);
+}
+
+.sky__talisman--b {
+  width: 26px;
+  height: 92px;
+  transform: rotate(3deg) translateY(7px);
+}
+
+.sky__seal {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 2.5px solid currentColor;
+  border-radius: 3px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 窄屏没有右侧留白，收了。 */
+@media (max-width: 1279px) {
+  .sky__corner {
+    display: none;
+  }
+}
+
+/* 古登堡是**特别的一类**，这一处先不挂 —— 它自己那套（走纸格线 + 活字）
+   已经够满，再塞朱印会打架。 */
+[data-theme='katsuji'] .sky__corner {
+  display: none;
+}
+
 /* ── 宣纸颗粒 + 暗角 ─────────────────────────────────────────
  *
  * 颗粒是**这一轮最不起眼、但最管用的一条**：纯 CSS 渐变之所以看着假，

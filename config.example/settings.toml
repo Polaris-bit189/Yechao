@@ -77,6 +77,19 @@
 #   [mail]
 #   target = "~/mail/2026-10.mbox"
 #   group_id = 820000006
+#   # 或者直连信箱（**只读**，要另配账号口令与协议接受记录）：
+#   # target = "imaps://imap.example.test:993/INBOX"
+#
+# ※ 邮件源**两条入口**：`target` 是一个 `.eml` / `.mbox` 的路径时读文件（离线、
+#   只读）；是一条 `imaps://…` 连接串时直连信箱（只读：EXAMINE + BODY.PEEK[]，
+#   不改任何 flag）。两条路算出的 `msg_id` 一样，所以同一封信不会入两次库。
+#
+# ※ **账号与口令不写在这里**（连接串里也不许写 `user:pass@`）—— 它们只从
+#   `YECHAO_IMAP_USER` / `YECHAO_IMAP_PASS` 读。原因与 `YECHAO_API_KEY` 相同：
+#   配置文件会被导出、会被提交。
+#
+# ※ 走信箱还要先接受第三方账号授权协议（`python -m yechao consent accept`）——
+#   那是「用你本人的账号去访问第三方」，没签就不许连。
 #
 #   [web]
 #   target = "https://某个站点的通知列表页"

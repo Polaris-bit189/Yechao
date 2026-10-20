@@ -157,9 +157,7 @@ def parse_eml(raw: bytes, *, group_id: int) -> list[PendingMessage]:
             "要去查的是这份导出为什么是空的。",
             bytes=len(raw),
         )
-    return _convert_all(
-        [message_from_bytes(raw, policy=policy.default)], group_id=group_id
-    )
+    return parse_messages([raw], group_id=group_id)
 
 
 def parse_mbox(raw: bytes, *, group_id: int) -> list[PendingMessage]:
@@ -181,8 +179,24 @@ def parse_mbox(raw: bytes, *, group_id: int) -> list[PendingMessage]:
             "不是解析器坏了：要去查的是这份导出为什么是空的。",
             bytes=len(raw),
         )
+    return parse_messages(segments, group_id=group_id)
+
+
+def parse_messages(raws: list[bytes], *, group_id: int) -> list[PendingMessage]:
+    """一批**已经从别处取回来的**原始邮件字节 → 消息。**纯函数。**
+
+    ※ 这是「取字节」与「解」之间的那道缝：文件那条路（`parse_eml` /
+    `parse_mbox`）与 IMAP 那条路（`mail_imap.fetch_window`）都从这儿进。
+    两条路算出的 `msg_id` 因此**必然**一样 —— 身份只由字节里的 `Message-ID`
+    决定，与「这些字节是从文件读的还是从服务器取的」无关。这是判据，有测试钉住
+    （`test_同一封信从文件读和从_IMAP_读算出同一个_msg_id`）。
+
+    ※ `raws` 为空时**返回空**，不抛：那是调用方的事。IMAP 那条路上「服务器说
+    这个窗口里 0 封」是一个**数据事实**（这段时间确实没有信），不是格式错；
+    而「取回来 N 封却读不出东西」由调用方在更外层抛（`_ImapNoContent`）。
+    """
     return _convert_all(
-        [message_from_bytes(seg, policy=policy.default) for seg in segments],
+        [message_from_bytes(r, policy=policy.default) for r in raws],
         group_id=group_id,
     )
 
