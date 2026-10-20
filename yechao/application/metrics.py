@@ -112,7 +112,7 @@ class MetricsReport:
         """给人看的报告。"""
         out = [
             f"语料 {self.corpus_size} 条",
-            f"覆盖率（真的跑到的比例）      {self.coverage}",
+            f"预筛保留（留下的 / 全部）    {self.coverage}",
             f"预筛召回（该留的留下了）      {self.prefilter_recall}",
             f"预筛误伤（该丢的留下了）      {self.prefilter_false_keep}",
             f"类目正确率                    {self.kind_accuracy}",
@@ -211,8 +211,11 @@ def model_metrics(
     report.corpus_size = len(expects)
 
     # 坑 1：覆盖率的分母是**该送的**，分子是**真的送了的**。
+    # ※ 分子必须是分母的**子集**。`sent_msg_ids` 是「库里条目引用过的
+    # 全部消息」—— 别的源进来的消息也在里面，而它们不在 `eligible`。
+    # 直接拿两个集合的规模相除，比值会超过 100%。
     report.coverage.total = len(eligible_msg_ids)
-    report.coverage.hit = len(sent_msg_ids)
+    report.coverage.hit = len(sent_msg_ids & eligible_msg_ids)
 
     # 按真值分组
     by_msg: dict[int, dict[str, Any]] = {}

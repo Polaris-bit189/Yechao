@@ -1098,6 +1098,13 @@ def _cmd_metrics(args: Args) -> int:
     report.coverage.hit = len(kept)
     report.coverage.total = len(msgs)
 
+    # 流水线那一侧的数字也要印出来。预筛召回是「漏检」的主指标，而它
+    # 只存在于这一次输出里（不落库）。
+    _say()
+    _say("以下是**流水线那一侧**的数字（预筛与脱敏，对合成语料的真值）：")
+    for line in report.lines()[:4]:
+        _say(f"  {line}")
+
     # ── 模型那一侧：读**库里真实落下的条目**，与本文件的真值比 ──
     #
     # ※ 这里读的是 `data/yechao.db` 里 refine 真的写下的东西 ——

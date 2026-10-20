@@ -39,9 +39,12 @@
 }
 
 .day__week {
+  flex-shrink: 0;
   padding-bottom: 4px;
   color: var(--fg-3);
   font-size: var(--fs-sub);
+  /* ※ 窄屏上日期块把这一行挤成一列字（「星 / 期 / 一」竖着排）。 */
+  white-space: nowrap;
 }
 
 /* ── 正文卡片 ──────────────────────────────────────────────── */
