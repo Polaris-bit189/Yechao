@@ -6,11 +6,11 @@
 领域层不取当前时刻（护栏 `test_领域层不取当前时间` 钉这条）。「现在」是一
 个外部输入，和「这段文字」没什么两样。
 
-**二、字段名与前端契约逐字对应。**
-`Item` 的字段名就是 `web/src/types.ts` 里 `Item` 的字段名，一个字母都不许
-差。前端那一侧是冻结契约，改任一边都要同时改另一边。
+**二、字段名与前端一一对齐。**
+`Item` 的字段名与 `web/src/api.ts` 的 `Item` 必须完全一致，一个字母都不许差。
+两边是同一份契约的两份抄本，改任一边都要同时改另一边。
 
-**三、生成字段（`kind_label` / `kind_icon` / `group_name`）**在**后端拼好**。
+**三、生成字段（`kind_label` / `group_name`）**在**后端拼好**。
 让前端自己查两张表的话，同一个字段在两处拼，漂移之后的症状是「卡片上有类目
 名、详情页没有」—— 两边代码单看都正常。
 
@@ -20,7 +20,7 @@
 一份事实。可变会让「谁在哪一步改了它」变成要顺着调用链找的问题，而这类
 问题在筛选/排序/去重的组合里极难查。
 
-⚠️ **但不可变不等于「全都 freeze」**：`deadline_ts` 会被闸门**清成 None**
+※ **但不可变不等于「全都 freeze」**：`deadline_ts` 会被闸门**清成 None**
 （源文里找不到依据）。那不是"修改这个对象"，那是**产出一个新的对象** ——
 所以用 `dataclasses.replace`，而不是 `setattr`。
 """
@@ -38,8 +38,8 @@ class PendingMessage:
     `content` 是**原文**，未经规范化、未经脱敏。它只在本机内存里流转，
     离开本机之前必须先过 `scrub`。
 
-    ⚠️ `sender` 与 `actor_uin` 的关系：群昵称（`sender`）在**本机内部**是
-    重要信号 —— 群昵称常带「22-1班班主任助理张三」这类角色与班级，是判断
+    ※ `sender` 与 `actor_account` 的关系：群昵称（`sender`）在**本机内部**是
+    重要信号 —— 群昵称常带「22-3班学习委员林小满」这类角色与班级，是判断
     「这条通知是不是官方发的」最可靠的依据。所以它在入口**不**被抹掉，
     只在**出网那一刻**才抹（边界画在出网，不是入口）。
     """
@@ -49,11 +49,22 @@ class PendingMessage:
     ts: int  # Unix 秒：消息发出的时间
     sender: str  # 群昵称（完整，常含角色与班级前缀）
     content: str  # 原文
-    #: QQ 号。**匿名消息为 None** —— 且**不该被人物筛选命中**。
-    #: 「匿名」与「没有 uin」在本项目里是同一件事，不允许用 0 冒充。
-    actor_uin: int | None = None
-    #: 这条消息来自哪个源（`qq` / `meeting` / `mail`）。给审计用。
-    source: str = "qq"
+    #: **账号**：这条消息的发送者在源系统里的标识（群里的号码、工号、
+    #: 学号都属于这一类）。**匿名消息为 None** —— 且**不该被人物筛选命中**。
+    #: 「匿名」与「没有账号」在本项目里是同一件事，不允许用 0 冒充。
+    #:
+    #: ※ 字段名刻意**不叫 `uin`**：`uin` 是某一家群聊平台的原生词，而本产品
+    #: 的源层是抽象的（`MessageSource` 端口 —— 源可以是群聊、会议转写、
+    #: 邮件、合成语料）。契约里留着平台专有的词，会让「这是个平台专用工具」
+    #: 这个印象从字段名里长出来。
+    #: ※ 它现在是**整数**（当前的源都拿数字当账号）。要接字符串账号的源，
+    #: 那是一次契约变更 —— 连 `schema.py` 的列类型一起改。
+    actor_account: int | None = None
+    #: 这条消息来自哪个源（`MessageSource.name`）。给审计用。
+    #: ※ 默认**空串** = 「这个源没有自报名字」，不是「它来自某个具体源」。
+    #: 默认值锚在某一个源的名字上（曾经是 `"qq"`）会让合成语料也自称来自
+    #: 那个源 —— 一条记错的来源在审计里看不出来，因为它格式完全正常。
+    source: str = ""
 
 
 @dataclass(frozen=True)
@@ -63,7 +74,7 @@ class ExtractionCandidate:
     它是「模型说了什么」，不是「我们采信了什么」。这两个之间隔着两道闸门
     （逐字回连 + 机械核验），所以刻意分成两个类型。
 
-    ⚠️ `quote` 必须能在源文里**逐字找到** —— 程序靠它回连到原条目。
+    ※ `quote` 必须能在源文里**逐字找到** —— 程序靠它回连到原条目。
     对不上的整条丢弃。
     """
 
@@ -71,7 +82,7 @@ class ExtractionCandidate:
     title: str
     quote: str  # 逐字摘录，用来回连源消息
     detail: str | None = None
-    #: ⚠️ 「截止日」与「活动开始时刻」是两件事，模型容易混。
+    #: ※ 「截止日」与「活动开始时刻」是两件事，模型容易混。
     #: 这两个字段**分别**过核验，见 `verify.py`。
     deadline: str | None = None
     start: str | None = None
@@ -81,32 +92,37 @@ class ExtractionCandidate:
 
 @dataclass(frozen=True)
 class Item:
-    """一条**已采信的**结构化条目 —— 它与 `web/src/types.ts` 的 `Item` 同形。
+    """一条**已采信的**结构化条目 —— 与 `web/src/api.ts` 的 `Item` 同形。
 
-    生成字段（`kind_label` / `kind_icon`）也在后端拼好。
+    生成字段（`kind_label`）也在后端拼好。
     """
 
     item_id: int
-    kind: str  # slug，如 "academic"
-    kind_label: str  # 中文，如 "学业"
-    kind_icon: str  # emoji
+    #: slug。※ 它的含义是「这条消息**要读者做什么**」，不是「它属于哪个
+    #: 话题」—— 判据与推导见 `domain/categories.py` 的模块 docstring。
+    kind: str  # 如 "todo"
+    #: 中文类目名。※ 仓储读出来时这里是**占位**（就是 slug 本身），
+    #: 真正的值由 `interfaces/view.py` 按「当前配置 + 别名表」算 ——
+    #: 类目可以改名，存库的名字会立刻过期。
+    kind_label: str  # 如 "要办的事"
     title: str
     detail: str | None
     event_ts: int  # 消息发出的时间（**永远有**）
-    #: ⚠️ **已过核验闸门**：None 表示源文里找不到依据。
+    #: ※ **已过核验闸门**：None 表示源文里找不到依据。
     #: 前端据此**不显示**它 —— 所以「清掉」这个动作是在数据层做的，
     #: 不是在渲染层（只在渲染层设卡，绕过去太容易）。
     deadline_ts: int | None
     group_id: int
     group_name: str
     actor: str | None  # 展示用的人名（可能已剥过前缀）
-    actor_uin: int | None
+    #: 账号。匿名条目为 None —— 见 `PendingMessage.actor_account`。
+    actor_account: int | None
     place: str | None
     amount: str | None
     links: tuple[str, ...] = ()
     source_count: int = 0
     #: 活动**本身开始**的时刻。
-    #: ⚠️ 与 `event_ts` 是两件事：`event_ts` = 消息发出的时间（永远有）；
+    #: ※ 与 `event_ts` 是两件事：`event_ts` = 消息发出的时间（永远有）；
     #: `start_ts` = 活动开始的时间。**为 None 是常态**（多数条目没有活动
     #: 时刻），不是异常。
     start_ts: int | None = None
@@ -117,7 +133,7 @@ class Item:
     deadline_supported: bool = False
     #: 开始时刻在源文里有依据。
     start_supported: bool = False
-    #: 这条是软删过的（界面上消失，库里的行仍在）。
+    #: 打过删除标记（网页上不显示，行还在库里）。
     deleted: bool = False
 
 
@@ -125,7 +141,7 @@ class Item:
 class SourceRef:
     """条目 ↔ 源消息的**一对多**引用。
 
-    ⚠️ 为什么不是一条：同一件事会在多个群里被转发（「三个不同群转发同一条
+    ※ 为什么不是一条：同一件事会在多个群里被转发（「三个不同群转发同一条
     通知」），而那恰恰是**最该保留、最该合并**的信号 —— 所以 `source_count`
     是一个有意义的量，不是冗余。
     """
@@ -151,7 +167,7 @@ class WindowItem:
 def replace_item(item: Item, **changes: object) -> Item:
     """产出一个**修改过的新条目**。
 
-    ⚠️ 刻意包一层而不是让调用方直接用 `dataclasses.replace`：闸门清字段时
+    ※ 刻意包一层而不是让调用方直接用 `dataclasses.replace`：闸门清字段时
     必须**同时**把对应的 `*_supported` 置 False，这两件事分开做迟早会漏
     （「函数返回值对、调用方解包顺序错」的同一形状：测试断言了清字段，
     没断言旗标）。
@@ -172,5 +188,5 @@ class Digest:
     body_md: str
     item_count: int
     #: 纯文本摘要（≤120 字），从正文**第一段**提取，已剥 markdown 记号。
-    #: ⚠️ 可选：旧快照里没有这个字段，前端按 `preview ?? ''` 处理。
+    #: ※ 可选：旧快照里没有这个字段，前端按 `preview ?? ''` 处理。
     preview: str | None = None

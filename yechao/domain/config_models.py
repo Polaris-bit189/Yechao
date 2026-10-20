@@ -1,15 +1,15 @@
 """配置的形状 —— 群、人物、模型设置。
 
-⚠️ **字段名是契约**：`groups.toml` 的 `id` / `name` /
+※ **字段名是契约**：`groups.toml` 的 `id` / `name` /
 `tier`。改了就失效 —— 用户的配置文件会读不出来。
 
 ## 为什么这些放在 domain 而不是 infrastructure
 
 它们是**值对象**：没有 I/O，只有形状与少量判据（「tier 只许是这三个值」
-「uin 必须是正整数」）。而形状是各层共用的 —— 适配层读出来、用例层用它、
+「account 必须是正整数」）。而形状是各层共用的 —— 适配层读出来、用例层用它、
 领域层判它。
 
-⚠️ 而 `load_toml` / `_atomic_write` 那些**在适配层** —— 它们碰文件。
+※ 而 `load_toml` / `_atomic_write` 那些**在适配层** —— 它们碰文件。
 这条分界正是分层护栏在守的东西。
 """
 
@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 from yechao.domain.categories import Category
 
-#: ⚠️ `tier` 是**闭集**。三个取值：
+#: ※ `tier` 是**闭集**。三个取值：
 #:   · `high` —— 通知群。消息**无条件保留**（预筛不过）。
 #:   · `normal` —— 一般群。
 #:   · `low` —— 二手/水群。**不额外保留**（但也不额外丢）。
@@ -31,9 +31,9 @@ VALID_TIERS: frozenset[str] = frozenset({"high", "normal", "low"})
 class GroupConfig:
     """一个被监视的群。
 
-    ⚠️ `name` **可以是空串** —— 那是给「快照里名字取不到」的群留的路。
-    服务端**不许**对空名做校验（前端注释逐字：「`collect` 刻意留 `""`，
-    无名群必须能原样加进来，所以**服务端不许收紧**」）。
+    ※ `name` **可以是空串** —— 快照里读不到群名时就是这个样子。
+    服务端**不许**对空名做校验：读快照时读不到名字会留一个空串，
+    这类群得能原样加进来。
     """
 
     id: int
@@ -45,7 +45,7 @@ class GroupConfig:
 
     def __post_init__(self) -> None:
         if self.tier not in VALID_TIERS:
-            # ⚠️ 抛而不是回落成 `normal`。回落的症状是「我把这个群标成
+            # ※ 抛而不是回落成 `normal`。回落的症状是「我把这个群标成
             # 高优了但它还是被筛掉了」—— 而用户会去查消息，不会来查拼写。
             from yechao.domain.errors import ValidationError
 
@@ -66,21 +66,27 @@ class GroupConfig:
 class PersonConfig:
     """一个被监视的人物。
 
-    ⚠️ `uin` 是 QQ 号，**必须正整数** —— 「0 不是有效账号」
-    （前端逐字）。这一条在前后端各有一份：前端做**即时反馈**，
+    ※ `account` 是这个人**在源系统里的账号**（群聊里的号码、工号、学号
+    都属于这一类），**必须正整数** —— 0 不是有效账号。这一条在前后端
+    各有一份（前端那份见 `web/src/pages/SetupPage.tsx`）：前端做**即时反馈**，
     后端做**真正的守门**（前端校验可以被绕过）。
+
+    ※ 字段名刻意**不叫 `uin`**：那是某一家群聊平台的原生词，而源层是
+    抽象的（`MessageSource` 端口）。见 `domain/models.py` 的
+    `PendingMessage.actor_account`。
     """
 
-    uin: int
+    account: int
     label: str = ""
     note: str = ""
 
     def __post_init__(self) -> None:
-        if self.uin <= 0:
+        if self.account <= 0:
             from yechao.domain.errors import ValidationError
 
             raise ValidationError(
-                f"QQ 号必须是正整数（{self.uin} 不是有效账号）", field="uin"
+                f"账号必须是正整数（{self.account} 不是有效账号）",
+                field="account",
             )
 
 
@@ -88,13 +94,13 @@ class PersonConfig:
 class LlmConfig:
     """模型设置。
 
-    ⚠️ **没有密钥字段** —— 密钥走环境变量（`.env`），不在这份配置里。
+    ※ **没有密钥字段** —— 密钥走环境变量（`.env`），不在这份配置里。
     所以前端也没有密钥输入框。把它加进来的那一刻，导出配置就会带上它。
     """
 
     base_url: str = ""
     model: str = ""
-    #: ⚠️ **三态**。`None` = 不发这个字段。
+    #: ※ **三态**。`None` = 不发这个字段。
     enable_thinking: bool | None = None
 
     @property
@@ -106,8 +112,10 @@ class LlmConfig:
     def normalized(self) -> "LlmConfig":
         """`trim()` 之后的自己。
 
-        ⚠️ 写侧归一化**必须看得见它的结果**（前端逐字）：
+        ※ 写侧归一化**必须看得见它的结果**：
         PUT 的响应要回归一化后的值，否则下一次 GET 回来会「变样」。
+        前端那条是同一个判据 —— 它拿响应回填输入框
+        （`web/src/pages/SetupPage.tsx`）。
         """
         return LlmConfig(
             base_url=self.base_url.strip(),
@@ -120,7 +128,7 @@ class LlmConfig:
 class CloudConfig(LlmConfig):
     """**云端二次处理**的端点。
 
-    ⚠️ 它继承 `LlmConfig` 是因为**形状完全相同**（endpoint + model +
+    ※ 它继承 `LlmConfig` 是因为**形状完全相同**（endpoint + model +
     三态的 thinking），而不是因为它们是一回事。分成两个类型/两段配置的
     理由是**边界**：
 
@@ -147,7 +155,7 @@ class CategorySet:
     """
 
     categories: list[Category] = field(default_factory=list)
-    #: `{旧 slug: 新 slug}` —— 改过名的类目在这里留痕。
+    #: `{旧 slug: 新 slug}` —— 类目改过 slug 之后，旧的那条记在这。
     aliases: dict[str, str] = field(default_factory=dict)
 
     def by_slug(self) -> dict[str, Category]:
