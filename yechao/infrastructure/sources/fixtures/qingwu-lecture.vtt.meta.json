@@ -1,0 +1,11 @@
+{
+  "fixture": "qingwu-lecture.vtt",
+  "source_url": "https://video.example.test/qingwu/lecture-2026-10-13",
+  "started_at": "2026-10-13 19:00:00",
+  "speaker": "赵雪依",
+  "description": "青梧摄影社 2026 年招新宣讲。\n报名截止 10 月 24 日 22:00；线下见面 10 月 26 日 14:00-17:00，地点学生活动中心 302。\n会费每年 40 元，家庭困难的同学可以申请减免。",
+  "encoding": null,
+  "sha256": "24f82f13e809eb17f100e7ba3744d7be899bf19d8add4cd89683551ff0024e58",
+  "cues": 123,
+  "note": "本夹具的内容**全部自编**：虚构校名「青梧」、虚构域名 example.test（RFC 2606 保留，永远不会解析）、虚构人名（取自本项目自己的合成语料 domain/synth.py）。不含任何真实视频、真实站点或真实人物的内容。source_url 是**虚构**的，它唯一的用途是给这段视频一个稳定的命名空间（msg_id 由它算出）—— 于是 .srt 与 .vtt 两份夹具算出同一批 id，而重跑摄取不会重复入库。started_at 是这段视频的**绝对起始时刻**（UTC+8 墙上时间）：字幕里的时间是相对视频开始的偏移，两者相加才是下游要的绝对时刻。"
+}

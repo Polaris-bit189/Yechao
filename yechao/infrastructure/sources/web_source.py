@@ -33,9 +33,12 @@
 
 ※ **本模块不 import `bootstrap`**：`bootstrap.py` 在模块级 import 本包，
 反过来引会造出导入环（`tests/contracts/test_layering.py::test_没有导入环`
-钉着这条）。所以 `config_dir` 的默认值在这里重新算了一次 —— 代价是
+钉着这条）。所以配置目录的默认值在 `_common.py` 里重新算了一次 —— 代价是
 「默认值有两处」，用一条测试钉住两边一致
-（`test_配置目录的默认值与组合根一致`）。
+（`test_配置目录的口径与组合根一致`）。
+
+※ `sources.toml` 的读法与时间窗的半开约定都从 `_common.py` 来：邮件源读的是
+**同一份文件**里的另一张表（`[mail]`），两个读它的人必须按同一套规矩读。
 
 ## ※ 类名为什么带下划线
 
@@ -61,7 +64,17 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from yechao.domain.errors import ConfigError, SourceFormatError, SourceUnavailable
-from yechao.infrastructure.config.toml_store import load_toml
+from yechao.infrastructure.sources._common import (
+    #: 配置目录的环境变量名。**必须与 `bootstrap.Settings.from_env` 一致**。
+    CONFIG_DIR_ENV,
+    #: 配置目录的默认名。**必须与 `bootstrap.DEFAULT_CONFIG_DIR` 一致**。
+    DEFAULT_CONFIG_DIR,
+    #: 数据源的配置文件。与 `groups.toml` 等并列放在配置目录下。
+    SOURCES_FILE,
+    config_dir as _config_dir,
+    in_window,
+    source_table,
+)
 from yechao.infrastructure.sources.web_fetch import META_SUFFIX, fetch_bytes
 #: 源的标识。它在解析模块里定义（每条消息的 `source` 字段用的就是它），
 #: 这里引用而不再写一遍字面量 —— 两处字面量漂移的症状是
@@ -72,12 +85,6 @@ from yechao.infrastructure.sources.web_parse import NAME, parse_page
 TARGET_ENV = "YECHAO_WEB_SOURCE"
 #: 分组号。※ 网页源没有天然的整数 id，所以它只能由配置给。
 GROUP_ID_ENV = "YECHAO_WEB_GROUP_ID"
-#: 配置目录的环境变量名。**必须与 `bootstrap.Settings.from_env` 一致**。
-CONFIG_DIR_ENV = "YECHAO_CONFIG_DIR"
-#: 配置目录的默认名。**必须与 `bootstrap.DEFAULT_CONFIG_DIR` 一致**。
-DEFAULT_CONFIG_DIR = "config"
-#: 网页源的配置文件。与 `groups.toml` 等并列放在配置目录下。
-SOURCES_FILE = "sources.toml"
 
 #: 不给分组号时用哪个。
 #:
@@ -121,37 +128,16 @@ def _origin(url: str) -> str:
     return f"{parts.scheme}://{parts.netloc}".lower()
 
 
-def _repo_root() -> Path:
-    """仓库根。`web_source.py` 的上三层。"""
-    return Path(__file__).resolve().parents[3]
-
-
-def _config_dir() -> Path:
-    """配置目录。口径与 `bootstrap.Settings.from_env` 一致（见模块 docstring）。"""
-    from_env = os.environ.get(CONFIG_DIR_ENV)
-    if from_env:
-        return Path(from_env)
-    return _repo_root() / DEFAULT_CONFIG_DIR
-
-
 def _settings_table() -> dict[str, Any]:
     """读 `<config_dir>/sources.toml` 的 `[web]` 表。没有就返回 `{}`。
 
-    ※ 复用 `toml_store.load_toml` 而不是自己 `tomllib.load`：那个函数已经
-    钉住了「**文件不存在**与**读不出来**是两件事」（前者返回 `{}`，后者抛）。
-    自己再写一遍就是两处口径，而漂移的症状是「配置文件写坏了却被当成没配」。
+    ※ 读法在 `_common.source_table` 里（邮件源读的是同一份文件的 `[mail]` 表，
+    两边必须按同一套规矩读）。这里只负责给出「`[web]` 该长什么样」的示例。
     """
-    data = load_toml(_config_dir() / SOURCES_FILE)
-    table = data.get("web")
-    if table is None:
-        return {}
-    if not isinstance(table, dict):
-        raise ConfigError(
-            f"{_config_dir() / SOURCES_FILE} 里的 [web] 不是一张表 —— "
-            f"它应当是 `[web]` 开头的一段，例如：\n"
-            f'  [web]\n  target = "https://..."\n  group_id = 820000001'
-        )
-    return table
+    return source_table(
+        "web",
+        hint='  [web]\n  target = "https://..."\n  group_id = 820000001',
+    )
 
 
 def _env_group_id() -> int | None:
@@ -328,7 +314,7 @@ class _WebSource:
         messages = parse_page(
             raw, namespace=self._target.namespace, group_id=self._target.group_id
         )
-        return [m for m in messages if _in_window(m.ts, since, until)]
+        return [m for m in messages if in_window(m.ts, since, until)]
 
 
 def build_web_source() -> _WebSource:
@@ -346,16 +332,3 @@ def build_web_source() -> _WebSource:
     然后才说网页源没配 —— 一半的工作已经做完了。
     """
     return _WebSource(resolve_target())
-
-
-def _in_window(ts: int, since: int | None, until: int | None) -> bool:
-    """半开区间 `[since, until)`。与合成源同一口径。
-
-    ※ 半开是刻意的：相邻两天用 `[d1, d2)` 与 `[d2, d3)` 拼起来不重不漏。
-    闭区间会让 00:00:00 那一刻的消息落进两天里。
-    """
-    if since is not None and ts < since:
-        return False
-    if until is not None and ts >= until:
-        return False
-    return True

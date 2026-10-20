@@ -581,8 +581,14 @@ def _rule_label(rule: str) -> str:
 
 
 def _cmd_refine(args: Args) -> int:
-    """本地模型抽取。"""
-    from yechao.application import extract as extract_uc
+    """本地模型抽取。
+
+    ※ 走的是 `application.track.run` —— 它**没有追踪规则时与
+    `extract.run` 逐字节相同**（见那边的 docstring），配了人物规则时才会
+    多一趟补抽。所以这一条命令不需要「配没配追踪」的分支：分支在用例层，
+    而这里只负责把它说出来。
+    """
+    from yechao.application import track as track_uc
     from yechao.bootstrap import make_app_or_explain
 
     st = _settings_from(args)
@@ -612,10 +618,19 @@ def _cmd_refine(args: Args) -> int:
 
     _say(f"  端点 {llm.base_url}")
     _say(f"  模型 {llm.model}")
+
+    # ※ 追踪规则在这里读一次并**说出来**：一条规则不响时，第一个要问的
+    # 就是「它到底被读进去了没有」—— 而 `config/tracks.toml` 写坏了会被
+    # `tracks()` 抛出来（读不出来就抛，不静默当没有）。
+    rules = app.config.tracks()
+    if rules:
+        _say(f"  追踪 {len(rules)} 条规则（{_track_summary(rules)}）")
     _say()
 
     try:
-        outcome = extract_uc.run(app.extract_deps(), budget=args.limit or 200)
+        outcome = track_uc.run(
+            app.extract_deps(), rules, budget=args.limit or 200
+        )
         _report_extract(outcome, st)
     finally:
         app.close()
@@ -626,9 +641,39 @@ def _cmd_refine(args: Args) -> int:
     return 0
 
 
+def _track_summary(rules: list[Any]) -> str:
+    """把规则清单压成一行：`人物 2 条 / 名词 1 条`。
+
+    ※ 不逐条打出来：规则可以有很多条，而这一行的用途是「确认它被读到了」，
+    不是「把它列出来」。逐条列会把「端点 / 模型 / 批次」那几行挤下去，
+    而那几行才是排查时先看的。
+    """
+    from yechao.domain.config_models import KIND_PERSON
+
+    people = sum(1 for r in rules if r.kind == KIND_PERSON)
+    terms = len(rules) - people
+    parts = []
+    if people:
+        parts.append(f"人物 {people} 条")
+    if terms:
+        parts.append(f"名词 {terms} 条")
+    return " / ".join(parts)
+
+
 def _report_extract(outcome: Any, st: Any = None) -> None:
     _say("抽取完成")
     _ok(f"条目 {len(outcome.items)} 条")
+    # ※ 追踪那一行只在**真的补抽过**时出现（`forced > 0`）。恒打一行
+    # 「追踪 0 条」会让「没配追踪」与「配了但一条都没命中」长得一样。
+    forced = int(getattr(outcome, "forced", 0) or 0)
+    if forced:
+        _ok(
+            f"追踪：{forced} 条消息由人物规则**单独抽了一趟**"
+            f"（它们本来会被预筛丢掉）"
+        )
+        extra = getattr(outcome, "tracked_run_id", "")
+        if extra:
+            _say(f"    补抽那一趟的账：python -m yechao ledger --run {extra}")
     # ※ 这一句与下面「整批失败」那一栏**必须一致**：`batches_ok` 记的是
     # 「这一批有没有产出可用的东西」，不是「这一批没把异常抛出来」
     # —— 后者会让「模型端点整个连不上」显示成「批次 22/22 成功」，
@@ -1278,6 +1323,15 @@ def _cmd_doctor(args: Args) -> int:
     except Exception as e:
         _fail(f"persons.toml：{e}")
         problems += 1
+    try:
+        # ※ 追踪**不是**必配的（默认就是关的）—— 所以 0 条是**正常**，
+        # 不是「没配」。而它写坏了要在这里报出来：`tracks()` 读不出来就抛，
+        # 而症状（「规则不响」）在别处看不出来。
+        rules = app.config.tracks()
+        _ok(f"追踪 {len(rules)} 条规则" + (f"（{_track_summary(rules)}）" if rules else ""))
+    except Exception as e:
+        _fail(f"tracks.toml：{e}")
+        problems += 1
 
     _say()
     _say("只读连接（不变量 ①）")
@@ -1423,8 +1477,7 @@ def _cmd_doctor(args: Args) -> int:
 def _cmd_serve(args: Args) -> int:
     """起网页。
 
-    ※ Windows 有**端口保留段**，
-    8787 / 8899 可能落进去并报 `WinError 10013`。
+    ※ Windows 有**端口保留段**，端口可能绑不上并报 `WinError 10013`。
     所以这里会**自动往上找**一个能用的端口，并把实际用的那个**打印出来**
     —— 静默换端口会让用户按 README 打开一个连不上的地址。
     """
@@ -1467,7 +1520,7 @@ def _pick_port(preferred: int, *, tries: int = 12) -> tuple[int, str]:
     返回 `(端口, 为什么要换 —— 没换就是空串)`。
 
     ※ 换端口时**必须说出来**。静默换端口会让用户按 README 打开
-    `127.0.0.1:8787` 看到一个连不上的页面，而他会以为是服务没起来。
+    首选的那个地址、看到一个连不上的页面，而他会以为是服务没起来。
     """
     import socket
 

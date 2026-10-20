@@ -47,7 +47,11 @@ from __future__ import annotations
 from typing import Any, Callable, Iterable
 
 from yechao.domain.errors import ConfigError
+from yechao.infrastructure.sources.mail_source import build_mail_source
+from yechao.infrastructure.sources.meeting_source import build_meeting_source
+from yechao.infrastructure.sources.subscription_source import build_subscription_source
 from yechao.infrastructure.sources.synth_source import SynthSource
+from yechao.infrastructure.sources.video_source import build_video_source
 from yechao.infrastructure.sources.web_source import build_web_source
 
 #: 源名 → 工厂。
@@ -66,6 +70,26 @@ REGISTRY: dict[str, Callable[[], Any]] = {
     #: ※ 它是一个**会报错的**工厂：没配目标时它抛 `ConfigError`，
     #: 而 `cli.py` 把它归在「用法错」那一档（退出码 2）。见 `build_web_source`。
     "web": build_web_source,
+    #: 邮件源。※ 名字说的是「它从哪儿读」（本机的邮件文件），不是「这个产品
+    #: 是干什么的」—— 见本模块 docstring 里「名字说的是这个源**是什么**」。
+    #:
+    #: ※ 它**不在 `DEFAULT_SOURCES` 里**，理由与网页源逐字相同：默认源要在
+    #: **离线、无配置**的情况下可用（`demo` 那条路的地基），而邮件源需要一个
+    #: 目标文件。默认带上它会让「什么都没配」变成「报错」。
+    #:
+    #: ※ 它是一个**会报错的**工厂：没配目标（或目标后缀不认）时它抛
+    #: `ConfigError`，而 `cli.py` 把它归在「用法错」那一档（退出码 2）。
+    #: 见 `build_mail_source`。
+    "mail": build_mail_source,
+    #: 会议转写源。目标是一个**目录**（转写文件）或本机客户端留下的会议历史库 ——
+    #: 没配时自动探测本机落盘位置。※ 不在 `DEFAULT_SOURCES` 里，理由同上面几个。
+    "meeting": build_meeting_source,
+    #: 视频源。目标是本地字幕文件或一个视频页链接（含 B 站）。
+    #: ※ 字幕在接口域名里，而那个域名的 robots 是 Disallow: / ——
+    #: 默认完全遵守；越过要用户在配置里点名，而且越权会先落一行记录。见 `video_source`。
+    "video": build_video_source,
+    #: 订阅源（小红书 / 抖音 / 快手 / 微博 / 知网）。要一个目标，可能还要登录态与协议。
+    "subscription": build_subscription_source,
 }
 
 #: 不给 `--source` 时用哪些。

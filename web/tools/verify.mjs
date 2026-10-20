@@ -12,7 +12,7 @@ const errs = []
 p.on('pageerror', (e) => errs.push(String(e)))
 p.on('console', (m) => m.type() === 'error' && errs.push(m.text()))
 
-await p.goto('http://127.0.0.1:8787/', { waitUntil: 'networkidle' })
+await p.goto('http://127.0.0.1:9000/', { waitUntil: 'networkidle' })
 await p.waitForTimeout(1200)
 
 const PAGES = [

@@ -339,7 +339,7 @@ def test_ingest_不认识的源名返回_2_并列出可用的源(workdir, capsys
     回落的症状是「用户以为读的是他指定的源，其实读的是合成语料」——
     而报告看起来一切正常。所以名字不认识就非零退出，并说清有哪些能用的。
     """
-    code = main(["ingest", "--source", "meeting", *_argv(workdir)])
+    code = main(["ingest", "--source", "nosuchsource", *_argv(workdir)])
     assert code == 2, "源名写错却没被当成用法错"
 
     text = "".join(capsys.readouterr())

@@ -538,33 +538,33 @@
 /* 远层淡、近层浓 —— 空气透视。两层都压着山的形状，合起来才有纵深。 */
 .sky__far-b {
   fill: currentColor;
-  opacity: 0.32;
+  opacity: 0.5;
 }
 
 .sky__far-a {
   fill: currentColor;
-  opacity: 0.6;
+  opacity: 0.85;
 }
 
 /* 六套的山色。雾最淡（山被雾吞掉大半），月最清（清辉下轮廓分明）。 */
 [data-theme='yoi'] .sky__far {
-  color: color-mix(in srgb, var(--bg) 90%, var(--fg-2));
+  color: color-mix(in srgb, var(--bg) 84%, var(--fg-2));
 }
 
 [data-theme='kiri'] .sky__far {
-  color: color-mix(in srgb, var(--bg) 95%, var(--fg-2));
+  color: color-mix(in srgb, var(--bg) 90%, var(--fg-2));
 }
 
 [data-theme='tsuki'] .sky__far {
-  color: color-mix(in srgb, var(--bg) 88%, var(--fg-2));
+  color: color-mix(in srgb, var(--bg) 82%, var(--fg-2));
 }
 
 [data-theme='sakura'] .sky__far {
-  color: color-mix(in srgb, var(--bg) 91%, var(--fg-2));
+  color: color-mix(in srgb, var(--bg) 85%, var(--fg-2));
 }
 
 [data-theme='yuu'] .sky__far {
-  color: color-mix(in srgb, var(--bg) 92%, var(--fg-2));
+  color: color-mix(in srgb, var(--bg) 88%, var(--fg-2));
 }
 
 /* 月：山前再立一排竹影。

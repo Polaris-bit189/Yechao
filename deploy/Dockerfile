@@ -33,8 +33,13 @@ COPY deploy/entrypoint.sh ./deploy/entrypoint.sh
 # `docker compose up` 时 scheduler 容器报 `exec: not found`，而那是启动期
 # 的一句英文报错，与「定时器没跑」这个真实病因隔着一层。
 COPY deploy/scheduler.sh ./deploy/scheduler.sh
+# ⚠️ 自动更新那一路的入口。**必须拷进来** —— 与 scheduler.sh 同一个理由：
+# 写好了而镜像里没有，症状是 `docker compose up` 时 watcher 容器报
+# `exec: not found`，而那是启动期的一句英文报错，与「信息流不更新了」
+# 这个真实病因隔着一层。
+COPY deploy/watcher.sh ./deploy/watcher.sh
 
-RUN chmod +x ./deploy/entrypoint.sh ./deploy/scheduler.sh \
+RUN chmod +x ./deploy/entrypoint.sh ./deploy/scheduler.sh ./deploy/watcher.sh \
     && mkdir -p /app/data /app/config
 
 # 入口脚本负责**首启初始化**：配置目录为空时把模板复制进去。

@@ -55,7 +55,11 @@
   padding: var(--s5) var(--s5) var(--s4);
   border: 1px solid var(--line);
   border-radius: var(--r3);
-  background: color-mix(in srgb, var(--surface) 74%, transparent);
+  /* ※ 74% → 64%：卡片原来是半透明的，但透出来的那点背景太淡，
+     等于一块实心板 —— 背景画得再好也被它挡死。放到 64% 之后，
+     纸面上的字仍然读得清（对比度测试盯着），而底下的东西**透得出来**。
+     这是「纸」的质感，不是「面板」。 */
+  background: color-mix(in srgb, var(--surface) 64%, transparent);
 }
 
 /* 概述句：比正文大一号，与第一小节之间留出明显空白。

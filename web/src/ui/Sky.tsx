@@ -198,12 +198,42 @@ function Scene({ theme }: { theme: ThemeId }) {
   )
 }
 
+/**
+ * 角落里的两件东西：一方朱印、两道符箓。
+ *
+ * ※ 为什么挑这两样 —— 它们是**中华道教的物件**（印章、符箓），同时也正是
+ *   那部作品里最反复出现的东西。不知情的人看到的是「国风」，知情的人看到的
+ *   是别的。这套界面要的就是这个：**中华元素是真的，梗藏在底下**。
+ *
+ * ※ 位置在**内容区右侧的留白**里。卡片盖不到那儿，所以它真的看得见 ——
+ *   上一版的远山栽的就是这一点：画得再用心，被卡片压住等于没画。
+ *   窄屏没有这块留白，由 CSS 收掉。
+ */
+function Corner() {
+  return (
+    <div className="sky__corner" aria-hidden="true">
+      <svg className="sky__talisman sky__talisman--a" viewBox="0 0 26 92">
+        <rect x="0.5" y="0.5" width="25" height="91" rx="1.5" />
+        <path d="M5 16h16M5 26h16M5 40h16M5 50h16M5 64h16M5 74h16" />
+        <path d="M13 16v58" />
+      </svg>
+      <svg className="sky__talisman sky__talisman--b" viewBox="0 0 26 92">
+        <rect x="0.5" y="0.5" width="25" height="91" rx="1.5" />
+        <path d="M5 20h16M5 34h16M5 48h16M5 68h16" />
+        <path d="M9 20v48M17 20v48" />
+      </svg>
+      <div className="sky__seal">夜抄</div>
+    </div>
+  )
+}
+
 export function Sky({ theme }: { theme: ThemeId }) {
   const dots = dotsFor(theme)
 
   return (
     <div className="sky" aria-hidden="true">
       <Scene theme={theme} />
+      <Corner />
 
       {dots.map((d, i) => (
         <span key={`${theme}-${i}`} className="sky__dot" style={d.style} />

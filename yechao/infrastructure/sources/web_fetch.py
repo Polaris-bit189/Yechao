@@ -131,21 +131,52 @@ def fetch_bytes(
     而它要能看见「页面声明了什么编码」。在这里先解一次会把编码声明丢掉，
     然后在解析侧再按默认编码解一次 —— 两处口径，漂移的症状是「有些页面乱码」。
 
+    ※ **要按 `Content-Encoding` 解压**。有的站点不管请求头怎么写都回 gzip ——
+    不解的话，解析器会在压缩流上找 HTML，症状是「页面里没有那段结构化数据」，
+    而它把人引向「站点改版了」这个错误结论。
+
     `opener` 只为测试留的注入口（默认走 `urllib.request.urlopen`）。
     """
     op = opener or urllib.request.urlopen
     _assert_robots_allows(url, opener=op, user_agent=user_agent, timeout=timeout)
 
-    request = urllib.request.Request(url, headers={"User-Agent": user_agent})
+    request = urllib.request.Request(
+        url, headers={"User-Agent": user_agent, "Accept-Encoding": "gzip, deflate"}
+    )
     try:
         with op(request, timeout=timeout) as resp:  # type: ignore[operator]
-            return resp.read()
+            raw = resp.read()
+            # 测试里的假响应不一定带 `headers` —— 没有就当「没压缩」。
+            headers = getattr(resp, "headers", None)
+            encoding = ((headers.get("Content-Encoding") if headers else "") or "")
+            encoding = str(encoding).strip().lower()
     except urllib.error.HTTPError as e:
         raise SourceUnavailable(
             f"抓 {url} 失败：HTTP {e.code}", url=url, status=e.code
         ) from e
     except urllib.error.URLError as e:
         raise SourceUnavailable(f"抓 {url} 失败：{e.reason}", url=url) from e
+
+    import gzip
+    import zlib
+
+    if encoding in ("gzip", "x-gzip"):
+        try:
+            return gzip.decompress(raw)
+        except OSError as e:
+            raise SourceUnavailable(f"抓 {url} 失败：gzip 解不开（{e}）", url=url) from e
+    if encoding == "deflate":
+        try:
+            return zlib.decompress(raw)
+        except zlib.error:
+            # 有的服务端给的是裸 deflate（没有 zlib 头）。
+            try:
+                return zlib.decompress(raw, -zlib.MAX_WBITS)
+            except zlib.error as e:
+                raise SourceUnavailable(
+                    f"抓 {url} 失败：deflate 解不开（{e}）", url=url
+                ) from e
+    return raw
 
 
 # ── 落盘 ────────────────────────────────────────────────────────────

@@ -361,13 +361,13 @@ def test_默认源在注册表里并且真的能造出来() -> None:
 def test_源名不认识时抛_不回落() -> None:
     """※ **不回落**是刻意的。
 
-    回落到默认源会让 `--source meeting`（还没实现）变成「静默读了合成语料」：
+    回落到默认源会让一个拼错的 `--source` 变成「静默读了合成语料」：
     用户拿到一份看起来成功的报告，而里面一条真消息都没有。
     这类失败比报错危险得多 —— 报错至少让人知道要去改什么。
     """
     from yechao.infrastructure.sources import build
 
     with pytest.raises(ConfigError) as ei:
-        build(["meeting"])
+        build(["nosuchsource"])
     # 报错要说清**有哪些能用的**，否则用户只能去读源码
     assert "synth" in str(ei.value)

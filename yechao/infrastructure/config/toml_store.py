@@ -45,6 +45,9 @@ GROUPS_FILE = "groups.toml"
 PERSONS_FILE = "persons.toml"
 CATEGORIES_FILE = "categories.toml"
 SETTINGS_FILE = "settings.toml"
+#: ※ 追踪规则。它**不是**第四个数据源，是流水线上的一层标记 ——
+#: 见 `application/track.py` 的模块 docstring。
+TRACKS_FILE = "tracks.toml"
 
 
 def _atomic_write(path: Path, text: str) -> None:
@@ -248,6 +251,57 @@ class TomlConfigStore:
             for p in persons
         ]}
         _atomic_write(self.persons_path, dumps_toml(data))
+
+    # ── 追踪 ────────────────────────────────────────────────────
+    #
+    # ※ **文件不存在 ⇒ 空列表**（不是报错）：追踪是**可选**的一层，
+    # 「没配」与「配了空的」在行为上完全一样（都不标记任何东西）。
+    # 这与 `categories()` 那边刻意不同 —— 那边「文件在但一个类目都没有」
+    # 是**改坏了**（类目是产品的主干），而这里「一条规则都没有」是一个
+    # 说得通的状态。两处的判据不同，因为「空」的含义不同。
+
+    @property
+    def tracks_path(self) -> Path:
+        return self.dir / TRACKS_FILE
+
+    def tracks(self) -> list[Any]:
+        """读追踪规则。
+
+        ※ 键名 `kind` / `value` 是**对外契约**（`config.example/tracks.toml`
+        里写的就是这两个词）。
+        """
+        from yechao.domain.config_models import TrackRule
+
+        raw = load_toml(self.tracks_path)
+        rows = raw.get("track") or []
+        if not isinstance(rows, list):
+            raise ConfigError(
+                f"{self.tracks_path} 的 `[[track]]` 不是一个数组 —— "
+                f"少写了一个 s 或写成了 `[track]`（后者会静默读成 0 条规则）"
+            )
+        out: list[TrackRule] = []
+        for i, row in enumerate(rows):
+            if not isinstance(row, dict):
+                raise ConfigError(f"{self.tracks_path} 第 {i + 1} 条规则不是一张表")
+            # ※ 缺键时**抛**而不是跳过 —— 跳过的症状是「我加了规则但它不响」，
+            # 而用户完全不知道去哪查。与 `groups()` 缺 `id` 同一条判据。
+            for key in ("kind", "value"):
+                if key not in row:
+                    raise ConfigError(
+                        f"{self.tracks_path} 第 {i + 1} 条 [[track]] 没有 `{key}`。"
+                        f"两条都要写：`kind`（person / term）与 `value`。"
+                    )
+            # ※ `str(row["value"])`：TOML 里账号是整数（`value = 17700001001`），
+            # 名词是字符串。值对象统一按字符串存 —— 见 `TrackRule` 的 docstring。
+            out.append(TrackRule(kind=str(row["kind"]).strip(),
+                                 value=str(row["value"]).strip()))
+        return out
+
+    def set_tracks(self, tracks: list[Any]) -> None:
+        data = {"track": [
+            {"kind": t.kind, "value": t.value} for t in tracks
+        ]}
+        _atomic_write(self.tracks_path, dumps_toml(data))
 
     # ── 类目 ────────────────────────────────────────────────────
 

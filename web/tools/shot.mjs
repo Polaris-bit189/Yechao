@@ -9,7 +9,7 @@
  *   shoot.mjs 把输出目录硬编码成 D:/github/yechao/docs/shots（审计 S3-05 记过），
  *   而且只会用默认主题。换主题要改 localStorage 再刷新，它做不到。
  *
- * 目标地址默认 8787（后端 serve 出来的 dist），可用 YC_URL 覆盖。
+ * 目标地址默认 9000（后端 serve 出来的 dist），可用 YC_URL 覆盖。
  */
 import { chromium } from 'playwright'
 import { mkdirSync } from 'node:fs'
@@ -19,7 +19,7 @@ const prefix = process.argv[3] ?? 'now'
 const pages = process.argv.slice(4).map(Number)
 const idxs = pages.length > 0 ? pages : [0, 1, 2, 3, 4, 5]
 
-const URL = process.env.YC_URL ?? 'http://127.0.0.1:8787/'
+const URL = process.env.YC_URL ?? 'http://127.0.0.1:9000/'
 const OUT = 'tools/shots'
 mkdirSync(OUT, { recursive: true })
 

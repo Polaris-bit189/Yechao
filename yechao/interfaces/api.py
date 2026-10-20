@@ -60,6 +60,17 @@ MAX_LIMIT = 200
 
 DEFAULT_LIMIT = 50
 
+#: `/api/tracked` 一次最多回看多少条**最近的**条目。
+#:
+#: ※ 它是**有上限的回看**，不是分页 —— 追踪问的是「最近有没有人提到 X」，
+#: 而不是「历史上所有提到 X 的条目」。撞上上限时响应里 `truncated: true`
+#: （**不静默截断**：一个空的 `items` 看不出「看完了没命中」与「没看完」
+#: 的区别，而这两句话的下一步完全不同）。
+#:
+#: 取 2000：演示语料是几百条，真实部署按每天几十到几百条算，2000 覆盖
+#: 十几天的量。这个数不参与任何判据，只决定「回看多远」。
+SCAN_LIMIT = 2000
+
 
 def _error(code: int, detail: str) -> JSONResponse:
     """※ 前端读 `body.detail` 当错误消息**原样显示**。
@@ -593,6 +604,103 @@ def create_app(app_obj: Any) -> FastAPI:
         people = [p for p in app_obj.config.persons() if p.account != account]
         app_obj.config.set_persons(people)
         return Response(status_code=204)
+
+    # ══ 追踪 ═══════════════════════════════════════════════════
+    #
+    # ※ 追踪是**流水线上的一层标记**，不是数据源 —— 所以这里只有一个
+    # **读**的出口，没有 POST / DELETE。规则在 `config/tracks.toml` 里
+    # （与群 / 人物 / 类目同一个做法：配置文件是规则的唯一来源）。
+
+    @api.get("/api/tracked")
+    def tracked(
+        rule: str | None = None,
+        limit: int = DEFAULT_LIMIT,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """最近命中追踪规则的条目，**带「命中了哪条规则」**。
+
+        ## 标记是**算**出来的，不是存下来的
+
+        判据与 `interfaces/view.py` 的 `kind_label` 逐字相同：规则是用户
+        随时能改的配置，存一份标记会在改规则之后**过期** —— 症状是
+        「我在 `tracks.toml` 里加了个名词，这里什么都没有」，而两边代码
+        单看都正常。所以每次读都按**当前**规则算一遍。
+
+        ## ※ 回看有一个**看得见**的上限
+
+        这里回看最近 `SCAN_LIMIT` 条条目（按 `event_ts` 倒序），在内存里
+        按规则过一遍。撞上上限时 `truncated: true` —— **不静默截断**：
+        「最近 2000 条里没有命中」与「更早的里面有没有命中我不知道」
+        是两句话，而它们的形状是一样的（一个空的 `items`）。
+        """
+        from yechao.application import track as track_uc
+
+        rules = app_obj.config.tracks()
+
+        wanted = None
+        if rule:
+            wanted = rule
+            if not any(r.key == wanted for r in rules):
+                # ※ 配了 `rule=` 而它不在配置里 ⇒ **400，不是空列表**。
+                # 空列表会被读成「这条规则没有命中过任何东西」—— 而真相是
+                # 「这条规则根本不存在」，两者的下一步完全不同（一个去改
+                # 规则，一个去改判据）。与 `ledger --run` 那条同一条判据：
+                # 「查不到这一次跑」与「这一次跑没有账」必须分开说。
+                raise ValidationError(
+                    f"配置里没有这条追踪规则：{rule}。"
+                    f"现在有 {len(rules)} 条："
+                    f"{'、'.join(r.key for r in rules) or '（一条都没有）'}",
+                    field="rule",
+                )
+
+        if limit < 0:
+            limit = 0
+        if limit > MAX_LIMIT:
+            limit = MAX_LIMIT
+
+        rows, _total = app_obj.reader.search(limit=SCAN_LIMIT, offset=0)
+
+        hits: list[tuple[Any, list[Any]]] = []
+        for it in rows:
+            matched = track_uc.hits_for_item(it, rules)
+            if wanted is not None:
+                matched = [r for r in matched if r.key == wanted]
+            if matched:
+                hits.append((it, matched))
+
+        page = hits[offset : offset + limit]
+        out_items = []
+        for it, matched in page:
+            body = _out(it)
+            # ※ 标记挂在条目上，而不是另起一个「命中列表」—— 调用方要的是
+            # 「这条条目为什么出现在这里」，那个答案必须与条目**在同一个
+            # 对象上**，否则它得自己按 item_id 去两边对。
+            # ※ 与上面 `rules` 那一栏**同一个形状**（含 `key`）：调用方要能
+            # 拿条目上的标记直接去 `?rule=` 筛，而不必自己拼 `kind:value`
+            # —— 拼串这件事只该有一处写法（`TrackRule.key`）。
+            body["tracked"] = [{**r.as_dict(), "key": r.key} for r in matched]
+            out_items.append(body)
+
+        by_rule: dict[str, int] = {}
+        for _it, matched in hits:
+            for r in matched:
+                by_rule[r.key] = by_rule.get(r.key, 0) + 1
+
+        return {
+            # ※ 每条规则带上它**在这个窗口里**命中了多少条 ——
+            # 「配了但一次都没响」是这里最该被看见的一格，而一个空列表
+            # 看不出它来。
+            "rules": [
+                {**r.as_dict(), "key": r.key, "hits": by_rule.get(r.key, 0)}
+                for r in rules
+            ],
+            "items": out_items,
+            "total": len(hits),
+            "limit": limit,
+            "offset": offset,
+            "scanned": len(rows),
+            "truncated": len(rows) >= SCAN_LIMIT,
+        }
 
     # ══ 群 ═════════════════════════════════════════════════════
 

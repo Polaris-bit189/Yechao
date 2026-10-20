@@ -869,7 +869,9 @@ def make_app_or_explain(**kw: Any) -> App:
 # 所以删掉而不是留着。
 
 
-def acquire_writer_lock(data_dir: Any, *, command: str) -> tuple[Any, str]:
+def acquire_writer_lock(
+    data_dir: Any, *, command: str, wait_seconds: float = 0.0
+) -> tuple[Any, str]:
     """给写者命令拿一把**进程级互斥锁**。返回 `(锁或 None, 拿不到的理由或 "")`。
 
     ※ 为什么入口层通过**这里**拿，而不是自己 import 适配层：
@@ -878,10 +880,15 @@ def acquire_writer_lock(data_dir: Any, *, command: str) -> tuple[Any, str]:
 
     判据与实现见 `infrastructure/runtime/lock.py`（用内核的排它锁，进程被
     强杀时由内核释放）。
+
+    ※ `wait_seconds` 默认 **0**（拿不到就立刻返回）—— 这个默认值是刻意
+    留着的：常驻的 `watch` 循环靠它「让路给手动命令」，而手动命令自己
+    不该等（「挂在那里不响」与「卡死了」在用户眼里一模一样）。
+    要等就显式给一个上界。
     """
     from yechao.infrastructure.runtime import lock
 
-    return lock.acquire(data_dir, command=command)
+    return lock.acquire(data_dir, command=command, wait_seconds=wait_seconds)
 
 
 def is_writer_command(command: str) -> bool:

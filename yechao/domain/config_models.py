@@ -87,6 +87,105 @@ class PersonConfig:
             )
 
 
+#: 追踪规则的**闭集**。两类，理由见 `TrackRule`。
+#:
+#: ※ 键名 `kind` / `value` 与 `config/tracks.toml` 是**同一份契约**：
+#: 模板里写的就是这两个词，改了模板里的用户配置就读不出来。
+KIND_PERSON = "person"
+KIND_TERM = "term"
+VALID_TRACK_KINDS: frozenset[str] = frozenset({KIND_PERSON, KIND_TERM})
+
+
+@dataclass(frozen=True)
+class TrackRule:
+    """一条**追踪规则** —— 「这个账号说的话」或「提到这个词的条目」。
+
+    ## 为什么只有两类
+
+    `person` 与 `term` 是两种**不同的可判定性**，不是「两个例子」：
+
+      · `person` —— 判据是**结构化**的：消息带着 `actor_account`，
+        相等就是命中。它不需要读正文，所以它**能在预筛之前**判定
+        （这正是「这个账号说的话不被预筛丢掉」能成立的原因）。
+      · `term`   —— 判据是**文本**的：标题/详情里出现这个串。
+        它只能在**条目成型之后**判（条目才有标题与详情）。
+
+    ⇒ 把两类混成一个 `value: str` 而丢掉 `kind`，就等于丢掉「这条判据
+    在哪一步能判」这件事 —— 而那是它们唯一的差别，也是唯一要紧的差别。
+
+    ## 为什么 `value` 一律是**字符串**
+
+    TOML 里 `value = 17700001001` 是整数、`value = "奖学金"` 是字符串。
+    存成 `str` 之后，两类规则在配置、API 输出、日志里是**同一个形状**，
+    比较与展示都只有一处写法。账号那一侧要整数时用 `account` 取 ——
+    它是一个**有校验的**转换，而不是散在各处的 `int()`。
+
+    ## 为什么校验放在这里（而不是读配置时）
+
+    与 `GroupConfig.tier` / `PersonConfig.account` 同一条判据：值对象的
+    不变量由值对象自己守。读配置时校验一次的话，**别处构造出来的**
+    `TrackRule`（测试、API、将来的导入包）就绕过了它，而症状是
+    「配了一条永远命中不了的规则」—— 它不报错，只是永远不响。
+    """
+
+    kind: str
+    value: str
+
+    def __post_init__(self) -> None:
+        if self.kind not in VALID_TRACK_KINDS:
+            from yechao.domain.errors import ValidationError
+
+            raise ValidationError(
+                f"追踪规则的 kind={self.kind!r} 不认识 —— "
+                f"只允许 {sorted(VALID_TRACK_KINDS)}（`person` 追账号，"
+                f"`term` 追名词）",
+                field="kind",
+            )
+        if not str(self.value).strip():
+            from yechao.domain.errors import ValidationError
+
+            raise ValidationError(
+                "追踪规则的 value 不能是空的 —— 一条空规则会命中所有东西",
+                field="value",
+            )
+        if self.kind == KIND_PERSON:
+            # ※ 账号必须是**正整数**：与 `PersonConfig.account` 同一条判据。
+            # `0` 不是账号（匿名消息的 `actor_account` 就是 None，而不是 0），
+            # 而 `"abc"` 这种根本没法与消息比 —— 两者都会让规则**静默失效**。
+            text = str(self.value).strip()
+            if not text.isdigit() or int(text) <= 0:
+                from yechao.domain.errors import ValidationError
+
+                raise ValidationError(
+                    f"person 规则的 value 必须是账号（正整数），"
+                    f"现在写的是 {self.value!r}",
+                    field="value",
+                )
+
+    @property
+    def account(self) -> int:
+        """`person` 规则的账号。**只对 `person` 有意义** —— 别的 kind 上调它会抛。
+
+        ※ 抛而不是返回 0：0 是一个合法账号以外的东西，拿它去比会让规则
+        「永远不命中」，而那与「今天没人说话」长得一样。
+        """
+        if self.kind != KIND_PERSON:
+            raise ValueError(f"只有 person 规则有账号，这条是 {self.kind!r}")
+        return int(str(self.value).strip())
+
+    @property
+    def key(self) -> str:
+        """`person:17700001001` —— 规则在 API 与日志里的**稳定标识**。
+
+        ※ 单独一个 `value` 不够：`2026` 既可能是一个账号、也可能是一个名词。
+        """
+        return f"{self.kind}:{self.value}"
+
+    def as_dict(self) -> dict[str, str]:
+        """给 API 输出的形状。"""
+        return {"kind": self.kind, "value": str(self.value)}
+
+
 @dataclass(frozen=True)
 class LlmConfig:
     """模型设置。

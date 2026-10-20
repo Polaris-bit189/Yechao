@@ -167,3 +167,84 @@ services:
       retries: 3
       start_period: 60s
     restart: unless-stopped
+
+  # ── 自动更新：每 10 分钟跑一轮「取数 → 抽取」────────────────────
+  #
+  # `ingest` 与 `refine` 都是手动命令 —— 没人跑，信息流就停在原地，
+  # 而它与「今天没人发消息」在页面上是**同一句话**（一个空的列表）。
+  # 这个服务就是那个「有人跑」。
+  #
+  # ## 它与 scheduler 的关系
+  #
+  # 两个服务各管一半，**不是同一件事的两个写法**：
+  #
+  #   watcher    每 10 分钟：ingest → refine（**库里的条目长出来**）
+  #   scheduler  每天 07:30：digest（**把条目读成一篇日报**）
+  #
+  # 分开的理由与「为什么 scheduler 是独立服务」逐字相同：生命周期不同、
+  # 失败要各自看得见。而**它们读写同一个库**，所以三者的必填变量声明
+  # 必须一致（少一项的症状是「取数正常、日报永远没生成」，而几个服务
+  # 各看一半日志）。
+  #
+  # ## 为什么 `depends_on` 应用（而且等它健康）
+  #
+  # 与 scheduler 同一个理由：**配置目录的初始化**。
+  # `entrypoint.sh` 负责「目录空时从 config.example 填一份」—— 而那一步
+  # 会把这个仓库里新加的 `tracks.toml` 一并复制进去。watcher 先跑起来而
+  # 配置还没准备好，症状是「追踪规则读不到 ⇒ 一条都不标」，而它**不报错**
+  # （没配追踪是一个合法状态）。
+  watcher:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    # ※ 与 `yechao` / `scheduler` 同一个镜像。这里**也**写 `build` ——
+    # `docker compose up` 不会替一个只写了 `image` 的服务去构建。
+    image: yechao:latest
+    # ※ 覆盖镜像的 ENTRYPOINT（那个会把 `serve` 起起来）。
+    # 写 `command` 不够：ENTRYPOINT 还在，它会把 command 当成自己的参数。
+    entrypoint: ["./deploy/watcher.sh"]
+    environment:
+      # 与 `yechao` / `scheduler` 同一组必填项 —— 它们读写**同一个库、
+      # 同一份配置**。
+      YECHAO_DATA_DIR: "${YECHAO_DATA_DIR:?必须指定数据目录（容器内挂载点）}"
+      YECHAO_CONFIG_DIR: "${YECHAO_CONFIG_DIR:?必须指定配置目录（容器内挂载点）}"
+      YECHAO_LLM_BASE_URL: "${YECHAO_LLM_BASE_URL:?必须指定模型端点}"
+      YECHAO_LLM_MODEL: "${YECHAO_LLM_MODEL:?必须指定模型名}"
+      YECHAO_API_KEY: "${YECHAO_API_KEY:-}"
+      YECHAO_DB_URL: "${YECHAO_DB_URL:?必须指定数据库连接串（云上指向 RDS）}"
+      YECHAO_REDIS_URL: "${YECHAO_REDIS_URL:?必须指定 Redis 连接串（云上指向 Redis）}"
+      # 两轮之间隔多久（秒）。
+      # ※ 这一项**可以**为空（`${VAR:-}` 而不是 `:?`）：它有默认值，
+      # 而「默认 10 分钟」正是产品要的。与 `YECHAO_DAILY_AT` 同一档。
+      #
+      # ※ 配成非正数（`0` / `-1` / `abc`）时 watch 入口**当场报错退出** ——
+      # 取整或回落会让「我配错了」看起来像「配好了」，而症状是
+      # 「间隔没按我写的来」。`0` 尤其不能当成「不睡」：那会变成忙等，
+      # 把 CPU 打满。「跑一轮就退」有它自己的开关（`--rounds 1`）。
+      YECHAO_WATCH_INTERVAL: "${YECHAO_WATCH_INTERVAL:-600}"
+    volumes:
+      - "${YECHAO_DATA_DIR:?}:${YECHAO_DATA_DIR:?}"
+      - "${YECHAO_CONFIG_DIR:?}:${YECHAO_CONFIG_DIR:?}"
+    depends_on:
+      yechao:
+        condition: service_healthy
+    # ※ 探的是**心跳文件的新鲜度**，不是「容器还在不在」——
+    # 一个卡死在 `sleep` 里（或者卡在一次永不返回的模型调用里）的循环，
+    # 与一个正常工作的循环在 `docker compose ps` 里长得一模一样。
+    #
+    # ※ 心跳文件与 scheduler 的那个**不是同一个**：共用会让「日报那个
+    # 卡住了」把「取数那个正常」也报成不健康，反过来也一样。
+    #
+    # ※ 窗口（600 秒）取得比**一轮**可能花的时间长：模型端点慢的时候，
+    # 循环正卡在一次抽取里面，那时它是**在干活**，不是卡住了。
+    # 窗口太短会把「慢」报成「死了」，而误报会让人学会忽略它。
+    #
+    # ※ 文件不在 / 读不到 ⇒ 抛异常 ⇒ 退出码非零 ⇒ unhealthy。
+    # **不兜底**：一个永远成功的探活比没有探活更危险。
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,sys,time;p=os.path.join(os.environ.get('YECHAO_DATA_DIR','/app/data'),'.watcher-heartbeat');sys.exit(0 if time.time()-os.path.getmtime(p)<600 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
