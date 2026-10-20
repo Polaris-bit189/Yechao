@@ -40,16 +40,16 @@
 
 .rail__brand {
   padding: 0 var(--s2) var(--s5);
-  font-size: 17px;
+  font-size: var(--fs-hero);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--track-label);
 }
 
 /* 品牌旁边的小字是「页面名徽标」的位置，固定不动 —— 切页面时它不跳。 */
 .rail__brand span {
   margin-left: 7px;
   color: var(--fg-3);
-  font-size: 10px;
+  font-size: var(--fs-tag);
   font-weight: 400;
   /* 小字徽标那一档字距 —— 与 `.phead__tag` 同一个角色，走同一个 token。 */
   letter-spacing: var(--track-wide);
@@ -69,7 +69,7 @@
   padding: 7px var(--s2);
   border-radius: var(--r1);
   color: var(--fg-2);
-  font-size: 13.5px;
+  font-size: var(--fs-note);
   text-align: left;
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
@@ -90,8 +90,13 @@
 }
 
 /* 选中态的**圆点**。规格点名要它 —— 背景高亮在深色底上不够清楚，
- * 而一个 4px 的圆点在任何主题里都能一眼看到。 */
-.rail__link.is-on::after {
+ * 而一个 4px 的圆点在任何主题里都能一眼看到。
+ *
+ * ※ 伪元素**常驻**，不再只挂在 `.is-on` 上。条件生成的伪元素没法过渡：
+ * 类名一加上它才存在，`transition` 无从谈起，只能凭空出现。
+ * 常驻 + `scale`/`opacity` 才能「长出来」——而且这两个属性正是规格允许动的
+ * （只动 transform/opacity，不触发布局）。 */
+.rail__link::after {
   content: '';
   flex-shrink: 0;
   width: 4px;
@@ -99,6 +104,14 @@
   margin-left: auto;
   border-radius: 50%;
   background: var(--accent);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+
+.rail__link.is-on::after {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .rail__link.is-on svg {
@@ -131,7 +144,7 @@
   padding: 6px var(--s2);
   border-radius: var(--r1);
   color: var(--fg-3);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
   text-align: left;
 }
 
@@ -167,13 +180,13 @@
   padding: 5px var(--s2);
   border-radius: var(--r1);
   color: var(--fg-2);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
   text-align: left;
 }
 
 .themebox__row em {
   color: var(--fg-3);
-  font-size: 11px;
+  font-size: var(--fs-tag);
   font-style: normal;
 }
 
@@ -239,7 +252,7 @@
   background: var(--surface);
   box-shadow: var(--shadow);
   color: var(--fg);
-  font-size: 13px;
+  font-size: var(--fs-note);
   animation: toastIn var(--t-mid) var(--ease);
 }
 
@@ -254,72 +267,17 @@
   }
 }
 
-/* ── 每个页面共用的页头 ────────────────────────────────────── */
-
-/* 标题块到内容的距离。原来是 s5(24)，量下来在 1440×1000 上是 57–101px
-   （标题块自己的高度 + 后面那几行提示），收一档到 s4。 */
-.phead {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s4);
-  margin-bottom: var(--s4);
+/* ※ 淡出。原来它**只有入场** —— 计时器到点直接 setToast(null)，
+   元素凭空消失。这个类由 App 在卸载前 300ms 挂上（见 App.tsx 的 toastOut）。 */
+.toast.is-out {
+  animation: toastOut var(--t-mid) var(--ease) forwards;
 }
 
-.phead__title {
-  font-size: var(--fs-title);
-  font-weight: 700;
-  letter-spacing: var(--track-tight);
-}
-
-/* 标题下的小字标识：固定了每页的视觉锚点，切页面时位置不跳。 */
-.phead__tag {
-  margin-top: 2px;
-  color: var(--fg-3);
-  font-size: 10.5px;
-  letter-spacing: var(--track-wide);
-  text-transform: uppercase;
-}
-
-.phead__side {
-  flex-shrink: 0;
-  padding-bottom: 3px;
-  color: var(--fg-3);
-  font-size: var(--fs-sub);
-}
-
-/* ── 共用小件 ──────────────────────────────────────────────── */
-
-.quiet {
-  color: var(--fg-3);
-  font-size: 13.5px;
-}
-
-.fail {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  margin-bottom: var(--s3);
-  padding: var(--s3);
-  border: 1px solid var(--danger);
-  border-radius: var(--r2);
-  background: var(--danger-weak);
-  color: var(--danger);
-  font-size: 13px;
-}
-
-.fail button {
-  color: inherit;
-  text-decoration: underline;
-}
-
-.seclabel {
-  padding-bottom: var(--s2);
-  border-bottom: 1px solid var(--line);
-  color: var(--fg-3);
-  font-size: 11.5px;
-  font-weight: 400;
-  letter-spacing: 0.08em;
+@keyframes toastOut {
+  to {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
 }
 
 /* ── 窄屏：导航变顶部两行 ──────────────────────────────────── */
@@ -340,7 +298,7 @@
   .rail__brand {
     flex-shrink: 0;
     padding: 0 var(--s3) 0 0;
-    font-size: 15px;
+    font-size: var(--fs-card);
   }
 
   /* 页面标签横排，可以横滑。 */
@@ -388,19 +346,5 @@
   .main {
     margin-left: 0;
     padding: var(--s4) var(--s3) var(--s6);
-  }
-
-  /* 窄屏提醒条不固定 —— 那里空间太小，固定条会吃掉可见区域。 */
-  .remind {
-    position: static;
-    height: auto;
-    flex-wrap: wrap;
-    gap: var(--s1) var(--s2);
-    padding: var(--s2) var(--s3);
-    margin-bottom: var(--s3);
-  }
-
-  .phead__title {
-    font-size: 20px;
   }
 }

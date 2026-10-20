@@ -135,6 +135,12 @@ class Item:
     start_supported: bool = False
     #: 打过删除标记（网页上不显示，行还在库里）。
     deleted: bool = False
+    #: 类目被**人工改过**。重排（用新提示词重判存量条目）要跳过它 ——
+    #: 否则用户改完类目、跑一次重排，改动就被冲掉了，而界面上没有任何提示。
+    #:
+    #: ※ 这个字段一直是**写了没人读**：`set_kind` / `bulk_set_kind` 置 1、
+    #: 撤销置 0，而没有任何一处分支看它。与 `was_deleted` 那次同形。
+    kind_locked: bool = False
 
 
 @dataclass(frozen=True)

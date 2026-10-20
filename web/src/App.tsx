@@ -51,13 +51,17 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  // 提示条正在淡出。它在卸载前 300ms 置真 —— 直接卸载元素是「凭空消失」。
+  const [toastOut, setToastOut] = useState(false)
   // 提醒条问过没有。问过就不显示，顶部那 36px 也不留（见 App.css 的 .is-bare）。
   const [remindDone, setRemindDone] = useState(remindAnswered)
 
   const refresh = useCallback(() => setTick((n) => n + 1), [])
 
   useEffect(() => {
-    paint(theme)
+    // ※ 传 true：走到这里一定是**用户切了主题**（首帧那次上色在 main.tsx 里，
+    //   走默认的不动画）。值没变时 paint 自己会跳过，所以挂载那次不会多一次过渡。
+    paint(theme, true)
     persist(theme)
   }, [theme])
 
@@ -66,8 +70,14 @@ export function App() {
 
   useEffect(() => {
     if (!toast) return
-    const id = setTimeout(() => setToast(null), 3200)
-    return () => clearTimeout(id)
+    setToastOut(false)
+    // 3000ms 开始淡出，3200ms 才卸载 —— 中间那 200ms 留给淡出动画。
+    const fade = setTimeout(() => setToastOut(true), 3000)
+    const gone = setTimeout(() => setToast(null), 3200)
+    return () => {
+      clearTimeout(fade)
+      clearTimeout(gone)
+    }
   }, [toast])
 
   async function undo() {
@@ -176,7 +186,7 @@ export function App() {
       </div>
 
       {toast && (
-        <div className="toast" role="status">
+        <div className={toastOut ? 'toast is-out' : 'toast'} role="status">
           {toast}
         </div>
       )}

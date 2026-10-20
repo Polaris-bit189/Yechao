@@ -140,9 +140,17 @@ def create_app(app_obj: Any) -> FastAPI:
             raise ValidationError("item_ids 不能为空", field="item_ids")
         if not kind:
             raise ValidationError("kind 不能为空", field="kind")
-        actor = f"bulk:{app_obj.clock.now()}:{len(ids)}"
+        # 非数字的编号回 400，不抛裸 ValueError（那会变成 500，
+        # 而前端把 500 读成「服务不可达」，于是弹出假的离线横幅）。
+        try:
+            item_ids = [int(i) for i in ids]
+        except (TypeError, ValueError):
+            raise ValidationError(
+                "item_ids 里必须都是条目编号", field="item_ids"
+            ) from None
+        actor = f"bulk:{app_obj.clock.now()}:{len(item_ids)}"
         actor, count = app_obj.store.bulk_set_kind(
-            [int(i) for i in ids], kind, actor=actor, ts=app_obj.clock.now()
+            item_ids, kind, actor=actor, ts=app_obj.clock.now()
         )
         return {"actor": actor, "count": count}
 
@@ -170,6 +178,11 @@ def create_app(app_obj: Any) -> FastAPI:
         同一维度内**并集**、维度之间**交集**。
         这一维一个都没勾，与整个参数不传是同一个意思 —— 都不按它筛。
         """
+        # 负的 LIMIT 在 SQLite 里等于「不限制」—— 一个请求就能把整库拉下来，
+        # 而响应里的 `limit` 还会如实回报一个负数。MySQL 那边则会因为
+        # `LIMIT -1` 语法报错回 500：同一个请求，两个后端两种结果。
+        if limit < 0:
+            limit = 0
         if limit > MAX_LIMIT:
             # ※ 不静默截断 —— 那会让调用方以为拿到了更多。
             # 但也**不报错**：前端可能改成更大的值而不知道上限。
@@ -241,7 +254,15 @@ def create_app(app_obj: Any) -> FastAPI:
         没有这个键」和「键在、值是 null」是两回事 —— 前者会走进另一条分支。
         """
         raw = payload.get("edit_id", None)
-        edit_id = None if raw is None else int(raw)
+        if raw is None:
+            edit_id = None
+        else:
+            try:
+                edit_id = int(raw)
+            except (TypeError, ValueError):
+                raise ValidationError(
+                    "edit_id 必须是一个整数编号", field="edit_id"
+                ) from None
         ok = app_obj.store.undo(edit_id, ts=app_obj.clock.now())
         return {"undone": ok}
 
@@ -844,14 +865,21 @@ def create_app(app_obj: Any) -> FastAPI:
             from yechao.domain.config_models import CategorySet, GroupConfig, PersonConfig
 
             _snapshot_categories(app_obj)
-            app_obj.config.set_groups([
-                GroupConfig(
-                    id=int(r["id"]), name=str(r.get("name") or ""),
-                    tier=str(r.get("tier") or "normal"),
-                    enabled=bool(r.get("enabled", True)),
-                )
-                for r in groups if isinstance(r, dict) and "id" in r
-            ])
+            # 配置包的输入是**用户手粘进 textarea 的 TOML**，所以
+            # `id = "abc"` 是真会发生的。回 400 并指出改哪一格，
+            # 不要让它变成一句英文的 `Internal Server Error`。
+            try:
+                new_groups = [
+                    GroupConfig(
+                        id=int(r["id"]), name=str(r.get("name") or ""),
+                        tier=str(r.get("tier") or "normal"),
+                        enabled=bool(r.get("enabled", True)),
+                    )
+                    for r in groups if isinstance(r, dict) and "id" in r
+                ]
+            except (TypeError, ValueError):
+                return _error(400, "配置包里有个群组的 id 不是数字 —— 改好再导入")
+            app_obj.config.set_groups(new_groups)
             app_obj.config.set_categories(CategorySet(
                 categories=[
                     Category(

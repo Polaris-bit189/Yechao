@@ -18,8 +18,19 @@ body {
   color: var(--fg);
   font-family: var(--sans);
   font-size: var(--fs-body);
-  line-height: 1.65;
+  line-height: var(--lh-mid);
   -webkit-font-smoothing: antialiased;
+
+  /* ── 中文排版 ──
+   * 三条都是渐进增强：不支持的浏览器直接忽略这条声明，不会退化。
+   *
+   * · `text-autospace` —— 中西文之间自动留隙。这个界面里现在是**手打空格**
+   *   凑出来的（「提炼 25 条」「@某某」），而手打的空格在换行处会被当成断点，
+   *   自动间隙不会。
+   * · `text-spacing-trim` —— 行首的全角标点（「（、《）不再顶出一格空白。
+   *   中文段落左边缘能不能对齐，靠的就是这一条。 */
+  text-autospace: normal;
+  text-spacing-trim: space-first;
 }
 
 h1,
@@ -27,11 +38,15 @@ h2,
 h3 {
   margin: 0;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: var(--lh-tight);
+  /* 标题断行取均衡 —— 避免末行只剩一两个字。对单行标题无影响。 */
+  text-wrap: balance;
 }
 
 p {
   margin: 0;
+  /* 段落断行取「不出现孤字」。长段落才看得出差别。 */
+  text-wrap: pretty;
 }
 
 a {

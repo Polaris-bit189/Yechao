@@ -147,6 +147,12 @@ def _reorder_chunk(deps: ReorderDeps, chunk: list[Item], *, actor: str) -> int:
         target = _find_by_quote(c.quote, valid)
         if target is None or not c.kind:
             continue
+
+        # ※ **手改过的类目不动。** `kind_locked` 一直是「写了没人读」：
+        # `set_kind` 置 1、撤销置 0，而重排不看它 —— 于是用户改完类目、
+        # 跑一次重排就被静默冲掉（静默的数据丢失是最难发现的一种）。
+        if target.kind_locked:
+            continue
         if target.kind == c.kind:
             continue
         # ※ 走 `set_kind`（它追加事件），**不直接改字段** —— 见模块 docstring 一。
@@ -156,13 +162,38 @@ def _reorder_chunk(deps: ReorderDeps, chunk: list[Item], *, actor: str) -> int:
 
 
 def _find_by_quote(quote: str, valid: dict[int, Item]) -> Item | None:
+    """把模型给的摘录回连到**一条**条目；对不上、或对上不止一条，都返回 None。
+
+    ※ 原来两个方向都试（`needle in title` 与 `title in needle`）。反方向会让
+    **短标题抢走长标题的摘录**：`选课通知` 是 `选课通知（补充）` 的子串，于是
+    模型对后者说的话被写到前者身上。而症状是 `changed=1` —— 看起来完全正常，
+    只是改错的不是那一条；撤销也只能撤这一条。
+
+    ⇒ 只做**一个方向**：摘录必须是某一条的 `标题：详情` 里的连续片段（这正是
+    模型看到的输入形状）。命中不止一条时**不猜** —— 宁可不改，也不改错。
+
+    ※ 与 `extract.match_quote` 同一个取向：那边写着「指错了比指不出来更坏」，
+    所以也只做逐字匹配。
+    """
     from yechao.domain.scrub import normalize
 
     needle = normalize(quote)
-    for it in valid.values():
-        if needle and (needle in normalize(it.title) or normalize(it.title) in needle):
-            return it
-    return None
+    if not needle:
+        return None
+
+    hits = [
+        it
+        for it in valid.values()
+        if needle in normalize(f"{it.title}：{it.detail or ''}")
+    ]
+    if len(hits) == 1:
+        return hits[0]
+    if not hits:
+        return None
+
+    # 多条命中 ⇒ 先看有没有标题与摘录**完全相同**的那一条；仍然不唯一就不猜。
+    exact = [it for it in hits if normalize(it.title) == needle]
+    return exact[0] if len(exact) == 1 else None
 
 
 def _is_cancelled(deps: ReorderDeps, job_id: str) -> bool:

@@ -217,7 +217,9 @@ def _drive_all(store: MySQLStore) -> None:
         run=_run(),
     )
     store.window_items(since=0, until=9999)
-    store.items_with_deadline(since=0, until=9999)
+    # ※ 用**合法形状**的哑值：`items_with_deadline` 与 `search` 同一个口径
+    # （`YYYY-MM-DD` 或 ≥9 位的 Unix 秒），4 位数会按「不认识的日期写法」拒绝。
+    store.items_with_deadline(since="2026-01-01", until="2026-12-31")
     store.search(kinds=["todo"], persons=[101], since="2026-10-01",
                  until="2026-10-31", group=820000001, q="交材料",
                  limit=10, offset=0)
@@ -254,11 +256,9 @@ def _drive_all(store: MySQLStore) -> None:
     store.any_job_running()
     store.request_cancel(job_id)
     store.cancel_requested(job_id)
-    store.finish_job(job_id, state="done", ts=13)
 
     store.get_kv("categories_undo_stack")
     store.set_kv("categories_undo_stack", "{}")
-    store.rebuild_fts()
     store.ping()
 
 

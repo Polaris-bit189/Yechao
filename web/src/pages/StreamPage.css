@@ -20,7 +20,7 @@
   padding: 8px 0;
   border: 0;
   background: none;
-  font-size: 13.5px;
+  font-size: var(--fs-note);
 }
 
 .find input:focus {
@@ -44,9 +44,13 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--fg-2);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
   white-space: nowrap;
-  transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+  /* ※ 补上 background：`.is-on` 除了边框与文字色，还改底色，
+     而原来的 transition 只列了前两个 —— 选中时底色是硬切的。
+     这类「状态过渡」不是持续动画，只跑一次，不占每帧预算。 */
+  transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
+    background var(--t-fast) var(--ease);
 }
 
 .chip svg {
@@ -66,7 +70,7 @@
 
 .chip__n {
   color: var(--fg-3);
-  font-size: 11px;
+  font-size: var(--fs-tag);
   font-variant-numeric: tabular-nums;
 }
 
@@ -81,7 +85,7 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--fg-3);
-  font-size: 12px;
+  font-size: var(--fs-sub);
 }
 
 .people__btn:hover {
@@ -114,9 +118,9 @@
   gap: var(--s3);
   padding: var(--s4) 0 var(--s1);
   color: var(--fg-3);
-  font-size: 11.5px;
+  font-size: var(--fs-tag);
   font-weight: 400;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--track-label);
 }
 
 .daygroup__rule {
@@ -195,7 +199,7 @@
   margin-top: 1px;
   overflow: hidden;
   color: var(--fg-2);
-  font-size: 13.5px;
+  font-size: var(--fs-note);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -235,7 +239,7 @@
   gap: 4px;
   margin-top: 4px;
   color: var(--fg-3);
-  font-size: 11.5px;
+  font-size: var(--fs-tag);
 }
 
 .row__map:hover {
@@ -260,14 +264,14 @@
 
 .row__tools select {
   padding: 1px 3px;
-  font-size: 11.5px;
+  font-size: var(--fs-tag);
 }
 
 .row__tools button {
   padding: 1px 6px;
   border-radius: var(--r1);
   color: var(--fg-3);
-  font-size: 11.5px;
+  font-size: var(--fs-tag);
 }
 
 .row__tools button:hover {
@@ -287,7 +291,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r2);
   color: var(--fg-2);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
 }
 
 .more button:hover {
@@ -344,12 +348,12 @@
   justify-content: space-between;
   color: var(--fg-3);
   font-size: var(--fs-sub);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--track-label);
 }
 
 .sheet__top button {
   color: var(--fg-3);
-  font-size: 15px;
+  font-size: var(--fs-card);
 }
 
 .sheet__top button:hover {
@@ -358,13 +362,13 @@
 
 .sheet__title {
   margin-top: var(--s3);
-  font-size: 19px;
+  font-size: var(--fs-hero);
 }
 
 .sheet__text {
   margin-top: var(--s2);
   color: var(--fg-2);
-  line-height: 1.8;
+  line-height: var(--lh-loose);
 }
 
 .sheet__facts {
@@ -374,7 +378,7 @@
   margin: var(--s4) 0;
   padding-top: var(--s3);
   border-top: 1px solid var(--line);
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 .sheet__facts dt {
@@ -394,7 +398,7 @@
 
 .sheet__acts select {
   flex: 1;
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 .sheet__drop {
@@ -402,7 +406,7 @@
   border: 1px solid var(--danger);
   border-radius: var(--r1);
   color: var(--danger);
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 .sheet__drop:hover {

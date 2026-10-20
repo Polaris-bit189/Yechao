@@ -69,7 +69,6 @@ from typing import Any
 
 from yechao.domain import chunking, prefilter, scrub
 from yechao.domain.categories import resolve_kind
-from yechao.domain.digest import extract_preview  # noqa: F401  (re-export 给用例)
 from yechao.domain.errors import FailureLedger, ModelError
 from yechao.domain.models import ExtractionCandidate, Item, PendingMessage, SourceRef
 from yechao.domain.verify import gate
@@ -847,7 +846,21 @@ def _resolve_ts(
 
     from yechao.domain.times import find_dates, find_times
 
-    dates = find_dates(text) or find_dates(source)
+    # ※ **只解析模型填的那一段，不回落到源文。**
+    #
+    # 这里原来写的是 `find_dates(text) or find_dates(source)` —— 模型填的串
+    # 解析不出来时，改用源文里的**第一个日期**。后果不是「少一个字段」，而是
+    # **造出一个字段**：模型填「待定」「尽快」「本周内」，会得到一个碰巧出现在
+    # 源文里的绝对时刻；而闸门随后去源文里逐字核对它 —— 值本来就是从源文抄的，
+    # **必然通过**。于是界面上出现一个「已核验的截止日」，而模型从来没说过它、
+    # 源文里也不存在这个组合。
+    #
+    # 这与闸门存在的理由直接冲突（它要拦的就是「补出源文没有的字段」），也与
+    # 「只认月+日齐备的日期」那条判据冲突（裸日 `28日` 本来就不会产出 `DateHit`，
+    # 所以这次回落对那个场景也帮不上忙）。
+    #
+    # ⇒ 解析不出来就是没有。字段空着，比空着的地方填一个编的值好。
+    dates = find_dates(text)
     times = find_times(text)
     if not dates:
         return None

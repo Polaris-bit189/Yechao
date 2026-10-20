@@ -23,7 +23,7 @@
   background: color-mix(in srgb, var(--bg-2) 92%, transparent);
   backdrop-filter: blur(var(--blur));
   color: var(--fg-3);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
 }
 
 .remind svg {
@@ -40,7 +40,7 @@
   border: 1px solid var(--line-2);
   border-radius: var(--r1);
   color: var(--fg-2);
-  font-size: 12px;
+  font-size: var(--fs-sub);
 }
 
 .remind__yes:hover {
@@ -50,7 +50,7 @@
 
 .remind__no {
   color: var(--fg-3);
-  font-size: 12px;
+  font-size: var(--fs-sub);
 }
 
 .remind__no:hover {
@@ -80,14 +80,14 @@
 
 .helpcard h2 {
   margin-bottom: var(--s3);
-  font-size: 17px;
+  font-size: var(--fs-hero);
 }
 
 .helpcard p {
   margin-bottom: var(--s4);
   color: var(--fg-2);
-  font-size: 13.5px;
-  line-height: 1.75;
+  font-size: var(--fs-note);
+  line-height: var(--lh-loose);
 }
 
 .helpcard dl {
@@ -95,7 +95,7 @@
   grid-template-columns: 72px 1fr;
   gap: var(--s2) var(--s3);
   margin-bottom: var(--s5);
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 .helpcard dt {
@@ -113,7 +113,7 @@
   border-radius: var(--r1);
   background: var(--accent-weak);
   color: var(--accent);
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 .helpcard button:hover {
@@ -123,8 +123,11 @@
 
 /* ── 页面头 ────────────────────────────────────────────────── */
 
-/* ※ 这份与 App.css 里那份是重复定义（同一套规则写了两遍），
-   改一处要改两处，否则哪份后加载哪份生效。 */
+/* 页头与共用小件（.phead* / .quiet / .fail / .seclabel）**只在这里定义**。
+   ※ 原来 App.css 里还有一份副本，且两份内容并不完全一致（.quiet 一份带
+   `padding: var(--s4) 0` 一份没有）。谁生效取决于 import 顺序 —— App.tsx
+   先 import App.css 再 import misc.css，所以一直是**这份**赢，
+   改 App.css 那份不生效、还不报错。那份已删。 */
 .phead {
   display: flex;
   align-items: flex-end;
@@ -143,7 +146,7 @@
 .phead__tag {
   margin-top: 2px;
   color: var(--fg-3);
-  font-size: 10.5px;
+  font-size: var(--fs-tag);
   letter-spacing: var(--track-wide);
   text-transform: uppercase;
 }
@@ -160,7 +163,7 @@
 .quiet {
   padding: var(--s4) 0;
   color: var(--fg-3);
-  font-size: 13.5px;
+  font-size: var(--fs-note);
 }
 
 .fail {
@@ -173,7 +176,7 @@
   border-radius: var(--r2);
   background: var(--danger-weak);
   color: var(--danger);
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 .fail button {
@@ -185,9 +188,9 @@
   padding-bottom: var(--s2);
   border-bottom: 1px solid var(--line);
   color: var(--fg-3);
-  font-size: 11.5px;
+  font-size: var(--fs-tag);
   font-weight: 400;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-label);
 }
 
 @media (max-width: 767px) {

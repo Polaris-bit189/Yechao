@@ -147,6 +147,9 @@ class Args:
         self.config_dir: str | None = None
         self.db: str | None = None
         self.port: int | None = None
+        #: 绑哪个地址。默认 127.0.0.1（本机只看得到自己）；
+        #: 容器里必须显式给 0.0.0.0 —— 见 `_cmd_serve` 那段注释。
+        self.host: str | None = None
         self.limit: int | None = None
         self.dry_run: bool = False
         self.fresh: bool = False
@@ -202,7 +205,7 @@ class Args:
                 continue
             if a in (
                 "--data-dir", "--config-dir", "--db", "--port", "--limit",
-                "--run", "--msg",
+                "--run", "--msg", "--host",
             ):
                 if i + 1 >= len(args):
                     self.unknown.append(a)
@@ -215,9 +218,21 @@ class Args:
                 elif a == "--db":
                     self.db = val
                 elif a == "--port":
-                    self.port = int(val)
+                    try:
+                        self.port = int(val)
+                    except ValueError:
+                        # 非法值不抛裸 traceback：那是「参数写错了」，
+                        # 与「不认识的参数」同一档（中文提示 + 退出码 2）。
+                        self.unknown.append(a)
+                        break
+                elif a == "--host":
+                    self.host = val
                 elif a == "--limit":
-                    self.limit = int(val)
+                    try:
+                        self.limit = int(val)
+                    except ValueError:
+                        self.unknown.append(a)
+                        break
                 elif a == "--run":
                     self.run_id = val
                 elif a == "--msg":
@@ -1100,7 +1115,11 @@ def _cmd_metrics(args: Args) -> int:
     except SystemExit:
         app = None
 
-    if app is not None and st.db_path.exists():
+    # ※ **不要用 `st.db_path.exists()` 判「跑过 refine 没有」。**
+    # 配了 `YECHAO_DB_URL` 时那个路径根本不会被用（云上指 RDS），于是这一段
+    # 永远被跳过 ⇒ 报告永远说「要先跑 refine 才有数」，而模型那一侧的数字
+    # 永远不出现。同一个判据在 `_db_line` 里已经论证过一遍了。
+    if app is not None:
         items = app.reader.all_items()
         produced: list[dict] = []
         sent_ids: set[int] = set()
@@ -1117,8 +1136,10 @@ def _cmd_metrics(args: Args) -> int:
             unsupported = sum(
                 1
                 for cond, ok in (
-                    (it.place, exp.get(mids[0]) and exp[mids[0]].place_text),
-                    (it.amount, exp.get(mids[0]) and exp[mids[0]].amount_text),
+                    # `mids` 为空时（条目没有来源）不要取 `mids[0]` ——
+                    # 那会是一段 traceback，而这里该说的是「这条条目没有来源」。
+                    (it.place, bool(mids) and exp.get(mids[0]) and exp[mids[0]].place_text),
+                    (it.amount, bool(mids) and exp.get(mids[0]) and exp[mids[0]].amount_text),
                 )
                 if cond and not ok
             )
@@ -1411,7 +1432,14 @@ def _cmd_serve(args: Args) -> int:
     _say(f"  打开 http://127.0.0.1:{port}")
     _say("  Ctrl+C 退出")
     _say()
-    uvicorn.run(api, host="127.0.0.1", port=port, log_level="warning")
+    # 默认只绑回环，容器里要显式绑 0.0.0.0。
+    # Docker 的端口发布是 DNAT 到容器 eth0，不是容器回环 —— 绑 127.0.0.1 时
+    # 宿主的 YECHAO_PORT 永远连不上，而 compose 的 healthcheck 恰恰是从
+    # 容器内探 127.0.0.1:8000 ⇒ 探活绿、页面打不开。
+    # 那是本项目最怕的形状，而且本地 `python -m yechao serve` 永远碰不到。
+    uvicorn.run(
+        api, host=args.host or "127.0.0.1", port=port, log_level="warning"
+    )
     return 0
 
 

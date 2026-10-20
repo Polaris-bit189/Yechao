@@ -228,18 +228,3 @@ def test_oversized_的边界是严格大于生效预算() -> None:
 
 
 # ── 估算 ────────────────────────────────────────────────────────────
-
-
-def test_estimate_batches_与实际切出的批数一致() -> None:
-    """`--plan-only` 与进度显示读的是这个数，它必须和真跑一样 ——
-    否则「说好 3 批」会变成 5 次调用。"""
-    gap = 2 * 3600
-    msgs = [
-        _msg(1, 11, 0, "甲" * 30),
-        _msg(2, 11, 60, "乙" * 30),
-        _msg(3, 11, 60 + gap, "丙" * 30),
-        _msg(4, 22, 0, "丁" * 30),
-    ]
-    assert chunking.estimate_batches(msgs, budget=BUDGET) == len(
-        chunking.chunk(msgs, budget=BUDGET)
-    )

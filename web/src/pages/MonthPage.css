@@ -15,13 +15,13 @@
   align-items: center;
   gap: var(--s2);
   color: var(--danger);
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 .clash__toggle {
   margin-left: auto;
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--fs-sub);
   opacity: 0.8;
 }
 
@@ -35,7 +35,7 @@
   gap: 1px;
   margin-top: 5px;
   color: color-mix(in srgb, var(--danger) 78%, var(--fg-2));
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
 }
 
 .clash__mid {
@@ -55,7 +55,7 @@
   margin-bottom: var(--s4);
   padding: var(--s2) var(--s3);
   border-radius: var(--r2);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
 }
 
 .course--ok {
@@ -97,7 +97,7 @@
   height: 26px;
   border-radius: var(--r1);
   color: var(--fg-3);
-  font-size: 17px;
+  font-size: var(--fs-hero);
   line-height: 1;
 }
 
@@ -108,7 +108,7 @@
 
 .monthbar__title {
   min-width: 120px;
-  font-size: 14px;
+  font-size: var(--fs-body);
   font-weight: 600;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -160,7 +160,7 @@
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   color: var(--fg-3);
-  font-size: 11.5px;
+  font-size: var(--fs-tag);
   text-align: center;
 }
 
@@ -175,7 +175,7 @@
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   color: var(--fg-2);
-  font-size: 13px;
+  font-size: var(--fs-note);
   transition: background var(--t-fast) var(--ease);
 }
 
@@ -243,7 +243,7 @@
   gap: var(--s2);
   padding: var(--s2) 0;
   border-bottom: 1px solid var(--line);
-  font-size: 13.5px;
+  font-size: var(--fs-note);
 }
 
 .due__bar {
@@ -263,18 +263,18 @@
 .due__note {
   flex-shrink: 0;
   color: var(--fg-3);
-  font-size: 11.5px;
+  font-size: var(--fs-tag);
 }
 
 .due__empty {
   padding: var(--s2) 0;
   color: var(--fg-3);
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 .due__tail {
   margin-top: var(--s2);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
   opacity: 0.8;
 }
 
@@ -294,6 +294,7 @@
   padding: var(--s2) 0;
   border-bottom: 1px solid var(--line);
   text-align: left;
+  transition: background var(--t-fast) var(--ease);
 }
 
 .near__row:hover {
@@ -303,7 +304,7 @@
 .near__day {
   flex-shrink: 0;
   color: var(--fg-2);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
   font-variant-numeric: tabular-nums;
 }
 
@@ -317,7 +318,7 @@
   flex: 1;
   overflow: hidden;
   color: var(--fg-2);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -339,6 +340,7 @@
   border-bottom: 1px solid var(--line);
   color: var(--fg-2);
   text-align: left;
+  transition: background var(--t-fast) var(--ease);
 }
 
 .mside__row:hover {
@@ -347,14 +349,14 @@
 
 .mside__d {
   flex-shrink: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
   font-variant-numeric: tabular-nums;
 }
 
 .mside__wd {
   flex-shrink: 0;
   color: var(--fg-3);
-  font-size: 11.5px;
+  font-size: var(--fs-tag);
 }
 
 .mside__n {
@@ -381,7 +383,7 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
 }
 
 .mside__bar {
@@ -402,7 +404,7 @@
 .mside__none {
   padding: var(--s3) 0;
   color: var(--fg-3);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
 }
 
 @media (max-width: 767px) {
@@ -420,7 +422,7 @@
 
   .grid__cell {
     height: 54px;
-    font-size: 12px;
+    font-size: var(--fs-sub);
   }
 
   .due__note {

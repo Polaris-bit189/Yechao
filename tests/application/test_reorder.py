@@ -321,3 +321,57 @@ def test_重排记的是_set_kind_事件而不是直接改字段(store) -> None:
     assert rows[0]["kind"] == "set_kind"
     assert rows[0]["item_id"] == iid
     assert json.loads(rows[0]["payload"]) == {"from": "know", "to": "todo"}
+
+
+def test_摘录只对上长标题时_不改短标题(store) -> None:
+    """※ **歧义回连的回归。**
+
+    `选课通知` 是 `选课通知（补充）` 的子串。原来 `_find_by_quote` 两个方向
+    都试，于是模型对**长**标题说的话会被写到**短**标题身上 —— 而 `changed=1`
+    看起来完全正常，只是改错的不是那一条；撤销也只能撤这一条。
+
+    ※ 夹具的关键是**顺序**：重排按 `event_ts DESC` 遍历，所以短的那条必须
+    **更新**、排在前面，反方向匹配才抢得到。两条事件时间一样的话，这条用例
+    就是空转（我第一版就这么写的，改回旧实现它照样绿）。
+    """
+    store.upsert_messages([
+        PendingMessage(msg_id=1, group_id=820000001, ts=1000, sender="某人", content="a"),
+        PendingMessage(msg_id=2, group_id=820000001, ts=1001, sender="某人", content="b"),
+    ])
+    ids = store.insert_items(
+        [
+            _item(title="选课通知（补充）", event_ts=1000),
+            _item(title="选课通知", event_ts=1001),
+        ],
+        [SourceRef(item_id=0, msg_id=1, quote=""), SourceRef(item_id=0, msg_id=2, quote="")],
+    )
+    long_id, short_id = ids
+
+    deps = _deps(store, {"选课通知（补充）": "todo"})
+    reorder_uc.run(deps)
+
+    assert store.item_detail(long_id).kind == "todo", "模型判的那一条没被改"
+    assert store.item_detail(short_id).kind == "know", "短标题抢走了长标题的摘录"
+
+
+def test_手改过的类目不被重排覆盖(store) -> None:
+    """※ **`kind_locked` 是「写了没人读」的又一次。**
+
+    `set_kind` / `bulk_set_kind` 把它置 1、撤销置 0，而**没有任何一处分支
+    看它** —— 于是「手改过的类目不被重排覆盖」这句注释一直不成立。
+    后果是静默的数据丢失：用户改完类目、跑一次重排，改动就没了，
+    而界面上没有任何提示。
+
+    判据两半：手改过的**不动**，没改过的**照常**被重判（否则「全都不动」
+    也能让它绿）。
+    """
+    ids = _insert(store, ["选课通知", "实验报告提交"])
+    hand, other = ids
+    store.set_kind(hand, "todo", actor="web", ts=5000)
+
+    deps = _deps(store, {"选课通知": "attend", "实验报告提交": "attend"})
+    out = reorder_uc.run(deps)
+
+    assert store.item_detail(hand).kind == "todo", "手改过的类目被重排冲掉了"
+    assert store.item_detail(other).kind == "attend", "没改过的条目应当照常被重判"
+    assert out["changed"] == 1, f"重排应当只改一条，实际改了 {out['changed']}"

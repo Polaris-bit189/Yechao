@@ -241,18 +241,6 @@ def _distinct_groups(items: list[Item]) -> int:
     return len({it.group_id for it in items})
 
 
-def _digest_system() -> str:
-    from yechao.application.prompts import DIGEST_SYSTEM
-
-    return DIGEST_SYSTEM
-
-
-def _digest_user(material: str) -> str:
-    from yechao.application.prompts import build_digest_user
-
-    return build_digest_user([], material)
-
-
 def _sha(text: str) -> str:
     import hashlib
 

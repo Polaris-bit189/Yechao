@@ -59,10 +59,13 @@ services:
     # 这个产品的每一条路由都要读库，库挂了整个产品就没法用）。
     # ※ 缓存挂了它**仍然回 200** —— 那是降级不是故障，重启修不好 Redis，
     # 只会让容器一直重启。降级写在响应体的 `degraded` 与 `cache.ok` 里。
+    # ※ 探活的**超时要大于缓存探测的预算**（Redis 客户端 2s，健康检查里会
+    # 问两次）—— 否则缓存不可达时探活超时 ⇒ 容器被判不健康 ⇒ 依赖它的
+    # 调度器永远不启动，而「今天没有日报」没有任何地方会报。
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3)"]
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=8)"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
       start_period: 10s
     restart: unless-stopped

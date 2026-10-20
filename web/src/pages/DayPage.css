@@ -28,7 +28,7 @@
 .day__date {
   font-size: var(--fs-date);
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--track-tight);
   font-variant-numeric: tabular-nums;
 }
 
@@ -60,8 +60,8 @@
 .paper__p:first-child {
   margin-bottom: var(--s5);
   color: var(--fg-2);
-  font-size: 14.5px;
-  line-height: 1.8;
+  font-size: var(--fs-card);
+  line-height: var(--lh-loose);
   max-width: var(--prose);
 }
 
@@ -71,8 +71,8 @@
 .paper__h2 {
   margin: var(--s3) 0 var(--s2);
   color: var(--fg);
-  font-size: 13px;
-  letter-spacing: 0.1em;
+  font-size: var(--fs-note);
+  letter-spacing: var(--track-label);
 }
 
 .paper__h2:not(:first-child) {
@@ -87,7 +87,7 @@
 .paper__h3 {
   margin: var(--s3) 0 var(--s1);
   color: var(--fg-2);
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 .paper__ul {
@@ -101,7 +101,7 @@
   max-width: var(--prose);
   padding-left: 14px;
   font-size: var(--fs-body);
-  line-height: 1.8;
+  line-height: var(--lh-loose);
 }
 
 /* 行首方点。在密集列表里比圆点安静。 */
@@ -129,7 +129,7 @@
   border-left: 2px solid var(--warn);
   background: var(--warn-weak);
   color: var(--fg-2);
-  font-size: 13px;
+  font-size: var(--fs-note);
 }
 
 /* ── 引用 ──────────────────────────────────────────────────── */
@@ -176,8 +176,8 @@
   max-width: var(--prose);
   margin-top: 1px;
   color: var(--fg-2);
-  font-size: 13.5px;
-  line-height: 1.7;
+  font-size: var(--fs-note);
+  line-height: var(--lh-loose);
 }
 
 .cited__meta {
@@ -211,6 +211,7 @@
   border-bottom: 1px solid var(--line);
   color: var(--fg-3);
   text-align: left;
+  transition: background var(--t-fast) var(--ease);
 }
 
 .past__row:hover {
@@ -220,7 +221,7 @@
 .past__day {
   flex-shrink: 0;
   color: var(--fg-2);
-  font-size: 13px;
+  font-size: var(--fs-note);
   font-variant-numeric: tabular-nums;
 }
 
@@ -228,7 +229,7 @@
   flex: 1;
   overflow: hidden;
   color: var(--fg-3);
-  font-size: 13px;
+  font-size: var(--fs-note);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -284,8 +285,8 @@
 
 .cited__src {
   margin: var(--s2) 0;
-  font-size: 12.5px;
-  line-height: 1.7;
+  font-size: var(--fs-sub);
+  line-height: var(--lh-loose);
 }
 
 .cited__src-head {
@@ -293,7 +294,7 @@
   align-items: baseline;
   gap: 5px;
   color: var(--fg-3);
-  font-size: 11.5px;
+  font-size: var(--fs-tag);
 }
 
 .cited__src p {
@@ -303,5 +304,5 @@
 
 .cited__srcs-err {
   color: var(--danger);
-  font-size: 12.5px;
+  font-size: var(--fs-sub);
 }

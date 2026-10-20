@@ -653,12 +653,13 @@ class MySQLStore:
     ) -> list[Any]:
         extra = "AND i.deadline_ts IS NOT NULL"
         args: list[Any] = []
+        # ※ 与 `search` 同一个口径：日期串与 Unix 秒都认（见那边的注释）。
         if since is not None:
             extra += " AND i.deadline_ts >= %s"
-            args.append(int(since))
+            args.append(as_ts(since))
         if until is not None:
             extra += " AND i.deadline_ts < %s"
-            args.append(int(until))
+            args.append(as_ts(until))
         rows, _ = self._item_query(extra=extra, args=args)
         return rows
 
@@ -1107,11 +1108,6 @@ class MySQLStore:
         )
         return bool(row and row["cancel_requested"])
 
-    def finish_job(
-        self, job_id: str, *, state: str, ts: int = 0, **kw: Any
-    ) -> None:
-        self.update(job_id, state=state, finished_at=ts, **kw)
-
     # ── 杂项 ────────────────────────────────────────────────────
 
     def get_kv(self, key: str) -> str | None:
@@ -1133,13 +1129,3 @@ class MySQLStore:
                 "ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)",
                 (key, value),
             )
-
-    def rebuild_fts(self) -> None:
-        """**空转**。MySQL 上没有 FTS 索引可重建（见 `search` 的注释）。
-
-        ※ 留一个空方法而不是删掉它，是为了让两个适配器**端口面一致** ——
-        删掉的话，任何一处「按端口调用」的代码在 MySQL 上会 AttributeError，
-        而那是一处只有切到 MySQL 才会踩到的坑。空转本身不静默：它什么都不做，
-        但 `search` 的注释说清了检索走的是哪条路。
-        """
-        return None

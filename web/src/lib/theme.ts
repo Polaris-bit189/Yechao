@@ -59,8 +59,48 @@ export function persist(id: ThemeId): void {
   }
 }
 
-export function paint(id: ThemeId): void {
-  document.documentElement.setAttribute('data-theme', id)
+/** 用户是否要求减少动效。这个界面里所有动画都要问过它一次。 */
+function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 上色。
+ *
+ * ※ 切主题走 View Transitions，而不是给颜色挂 transition。
+ *
+ * 理由不是好看，是**规格**：`界面规格.md` §六 要求「动效只动 transform/opacity」，
+ * 因为动 `background-color` / `color` 会触发重绘，低端机掉帧。而直接给颜色挂
+ * transition 正是这么干的 —— 六套主题切一次要重绘整个页面。
+ *
+ * `document.startViewTransition()` 内部做的是「截下旧帧 → 截下新帧 → 交叉溶解」，
+ * 动的只有两张位图的 opacity，落在允许范围内。
+ *
+ * 不支持该 API 的浏览器、以及 `prefers-reduced-motion` 的用户，直接硬切 ——
+ * 这正是改动之前的行为，不是降级到更差，是不做增强。
+ *
+ * @param animate 只有**用户主动切主题**才传 true。首帧上色（main.tsx）走默认值，
+ *                否则会在页面还没渲染时做一次空白过渡。
+ */
+export function paint(id: ThemeId, animate = false): void {
+  const root = document.documentElement
+  // 值没变就别动 —— 省掉一次无意义的过渡（首帧会撞上这种情况）。
+  if (root.getAttribute('data-theme') === id) return
+
+  const apply = () => root.setAttribute('data-theme', id)
+
+  const doc = document as unknown as {
+    startViewTransition?: (cb: () => void) => unknown
+  }
+  if (!animate || typeof doc.startViewTransition !== 'function' || prefersReducedMotion()) {
+    apply()
+    return
+  }
+  doc.startViewTransition(apply)
 }
 
 /** 敲这个切彩蛋。 */

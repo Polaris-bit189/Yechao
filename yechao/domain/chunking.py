@@ -205,10 +205,3 @@ def oversized(
     """
     effective = int(budget * HEADROOM)
     return [m for m in messages if len(m.content) > effective]
-
-
-def estimate_batches(
-    messages: list[PendingMessage], *, budget: int = DEFAULT_BUDGET_CHARS
-) -> int:
-    """**不发请求**地估算会切出几批。给 `--plan-only` 与进度显示用。"""
-    return len(chunk(messages, budget=budget))

@@ -123,7 +123,7 @@ for (const b of BLOCKS) if (b.selector === ':root') GLOBAL = declarations(b.body
 /** parity 遍历的就是这个集合 —— 它必须来自 ALL，不是 MENU。 */
 const TRAVERSED: string[] = ALL.map((t) => t.id)
 
-/** 结构 token：这 13 个不是全局常量，是主题身份（规格 §四 铁律二）。 */
+/** 结构 token：这 14 个不是全局常量，是主题身份（规格 §四 铁律二）。 */
 const STRUCTURAL = [
   'r1',
   'r2',
@@ -134,6 +134,7 @@ const STRUCTURAL = [
   'sans',
   'mono',
   'track-tight',
+  'track-label',
   'track-wide',
   't-fast',
   't-mid',
@@ -142,8 +143,10 @@ const STRUCTURAL = [
 
 /** 每块写满这么多。六块一起少一个，parity 是查不出来的，只能靠这个数。
  *  ※ 类目色从七降到六（类目体系按「读者要做什么」重推，见
- *  `yechao/domain/categories.py`），所以这个数从 42 变成 41。 */
-const TOKENS_PER_THEME = 41
+ *  `yechao/domain/categories.py`），这个数从 42 变成 41。
+ *  ※ 之后补了 `--track-label`（小节标签的字距 —— 原来在四处各手写一个值：
+ *  0.06 / 0.08 / 0.1em，刻度里没有它们的位置），又回到 42。 */
+const TOKENS_PER_THEME = 42
 
 // ── 颜色 ─────────────────────────────────────────────────────
 //
@@ -285,8 +288,10 @@ describe('token 齐不齐', () => {
     }
   })
 
-  it('全局块只放全站唯一的东西（间距 / 骨架 / 字号阶）', () => {
+  it('全局块只放全站唯一的东西（间距 / 骨架 / 字号阶 / 行高）', () => {
     const g = [...GLOBAL!.keys()].sort()
+    // ※ 字号阶补过两档（fs-hero / fs-note）、行高收成三档（lh-*）：
+    //   它们跟间距、页宽一样，六套主题共用一套值，不属于任何一套的气质。
     const allowed = new Set([
       's1',
       's2',
@@ -300,10 +305,15 @@ describe('token 齐不齐', () => {
       'prose',
       'fs-date',
       'fs-title',
+      'fs-hero',
       'fs-card',
       'fs-body',
+      'fs-note',
       'fs-sub',
       'fs-tag',
+      'lh-tight',
+      'lh-mid',
+      'lh-loose',
     ])
     const unexpected = g.filter((n) => !allowed.has(n))
     expect(

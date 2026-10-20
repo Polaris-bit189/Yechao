@@ -685,11 +685,20 @@ def _build_stores(st: Settings, *, readonly: bool) -> tuple[Any, Any]:
                 label=label,
             )
             return reader, reader
-        conn = mysql_store.connect_mysql(target, readonly=False)
+        boot = mysql_store.connect_mysql(target, readonly=False)
         # ※ 每次启动都建表（`CREATE TABLE IF NOT EXISTS` 幂等）：RDS 上
         # 第一次连上去的是一个**空库**，没有「文件在不在」可判断。
-        mysql_store.init_db(conn)
-        store = mysql_store.MySQLStore(conn, label=label)
+        mysql_store.init_db(boot)
+        boot.close()
+        # ※ **写连接也按线程隔离。** HTTP 的写端点（删条目、改类目、撤销、
+        # 取消作业）与读端点跑在**同一个**线程池里 —— 共享一条写连接时，
+        # 两个并发请求会撞出 `InterfaceError`，实测约 10% 回 500，
+        # 还夹着几个**假 404**（`SELECT ... WHERE item_id=?` 被搅成 None，
+        # 于是对一条存在的条目说「没有这条条目」）。
+        store = mysql_store.MySQLStore(
+            factory=lambda: mysql_store.connect_mysql(target, readonly=False),
+            label=label,
+        )
         # ※ 读连接按线程隔离：HTTP 端点在 FastAPI 的线程池里跑。
         reader = mysql_store.MySQLStore(
             factory=lambda: mysql_store.connect_mysql(target, readonly=True),
@@ -709,7 +718,12 @@ def _build_stores(st: Settings, *, readonly: bool) -> tuple[Any, Any]:
 
     if not path.exists():
         sqlite_store.init_db(path)
-    store = sqlite_store.SqliteStore(sqlite_store.connect(path), label=str(path))
+    # ※ **写连接也按线程隔离。** 理由与上一段相同：`serve` 的写端点跑在
+    # FastAPI 的线程池里，共享一条连接时并发写会炸 —— 而这条 bug 在
+    # 单线程测试里一个都抓不到，只有浏览器真的并发请求时才出现。
+    store = sqlite_store.SqliteStore(
+        factory=lambda: sqlite_store.connect(path), label=str(path)
+    )
     # ※ 读连接同样按线程隔离：`serve` 走的就是这条 reader。
     reader = sqlite_store.SqliteStore(
         factory=lambda: sqlite_store.open_readonly(path), label=str(path)

@@ -68,7 +68,11 @@ def _acquire_writer_lock(argv: list[str]) -> tuple[Any, str]:
 
     # ※ 数据目录**从组合根问**，不在这儿拼默认值（`--data-dir` 没给时还要
     # 看 `YECHAO_DATA_DIR`）—— 与 CLI 走的是同一个 `Settings.from_paths`。
-    st = Settings.from_paths(data_dir=args.data_dir)
+    # ※ **`db_path` 也要传。** 只传 `data_dir` 的话，`--db` 指到别处时
+    # `st.db_path` 还是默认值（`<data_dir>/yechao.db`），于是锁落在数据目录、
+    # 而库在别处 —— 两个写者用**同一个库**、拿**两把不同的锁**，
+    # 互斥等于没有。这条是审查实测出来的：两个进程各自拿到锁、都写了库。
+    st = Settings.from_paths(data_dir=args.data_dir, db_path=args.db)
 
     # ※ 锁落在**库文件所在的那个目录**，不是数据目录。
     # 默认两者是同一个（`db_path = data_dir/yechao.db`），所以行为不变；

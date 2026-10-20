@@ -49,23 +49,6 @@ def _s(v: Any) -> str | None:
     return s if s.strip() else None
 
 
-def build_kind_lookup(
-    categories: list[Any], aliases: dict[str, str]
-) -> dict[str, tuple[str, str]]:
-    """`slug → (label, 真实 slug)`。
-
-    ※ **建成一张表传下去**，而不是在循环里逐条查 —— 后者是 O(条目 × 类目)。
-    在列表页（200 条 × 6 类目）上不明显，但那只是因为它小；
-    而这个函数的存在让「怎么解析一个 slug」只有一处实现。
-    """
-    cats = {c.slug: c for c in categories}
-    out: dict[str, tuple[str, str]] = {}
-    for slug in cats:
-        label, real = resolve_kind(slug, cats)
-        out[slug] = (label, real)
-    return out
-
-
 def item_out(
     item: Any,
     *,
@@ -150,12 +133,3 @@ def job_out(j: dict[str, Any]) -> dict[str, Any]:
         "started_at": j["started_at"],
         "finished_at": j["finished_at"],
     }
-
-
-def estimate_stale(ts: int, clock: Any) -> bool:
-    """这条数据是不是「上一次运行留下的」。
-
-    留一个显式的判据而不是让它散在别处 —— 因为「新鲜度」是一种很容易
-    在重构里丢掉、而丢了也不会报错的语义。
-    """
-    return clock.days_apart(clock.now(), ts) > 30

@@ -78,6 +78,7 @@ def row_to_item(row: Any) -> Any:
         deadline_supported=bool(row["deadline_supported"]),
         start_supported=bool(row["start_supported"]),
         deleted=bool(row["deleted"]),
+        kind_locked=bool(row["kind_locked"]),
     )
 
 

@@ -114,3 +114,72 @@ def test_factory_模式下每个线程拿到不同连接(db):
     # 线程池可能复用线程，所以「不同 id 的数量」不一定等于 8；
     # 但至少要 >1，否则说明所有线程共用了一个连接。
     assert len(set(seen)) > 1, f"8 个线程只拿到 {len(set(seen))} 个连接"
+
+
+def test_写连接也必须按线程隔离(db):
+    """※ 同一个 bug 的**另一半**：并发**写**。
+
+    原来的并发用例只打了 `reader`（读）。而 `serve` 的写端点（删条目、改类目、
+    撤销、取消作业）跑在**同一个** FastAPI 线程池里 —— 写连接共享时，实测约
+    10% 的写请求回 500，还夹着几个**假 404**（`SELECT ... WHERE item_id=?` 被
+    搅成 None，于是对一条存在的条目说「没有这条条目」，而那句话是假的）。
+
+    判据：按线程隔离的 store，多线程同时改类目 —— **0 个失败**，且改动真的落库。
+    """
+    writer = SqliteStore(factory=lambda: sqlite_store.connect(db))
+
+    def one(item_id: int) -> str | None:
+        try:
+            writer.set_kind(item_id, "todo", actor="t", ts=2000)
+            return None
+        except Exception as e:  # noqa: BLE001 — 这里就是要抓住「任何失败」
+            return f"{type(e).__name__}: {e}"
+
+    failures: list[str] = []
+    # 多轮 —— 竞态本来就时灵时不灵。
+    for _ in range(5):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            for err in pool.map(one, list(range(1, 8)) * 2):
+                if err:
+                    failures.append(err)
+
+    assert not failures, (
+        f"并发写失败了 {len(failures)} 次 —— 写连接没有按线程隔离：\n"
+        + "\n".join(failures[:5])
+    )
+
+    # 空转自检：写必须真的落库，不能「没报错但什么都没发生」。
+    got = writer.item_detail(1)
+    assert got is not None and got.kind == "todo", (
+        "并发写没报错，但改动没落库 —— 这条用例在空转"
+    )
+
+
+def test_装配出来的写连接也按线程隔离(tmp_path):
+    """※ 上一条测的是「工厂模式的 store 扛得住并发」；这一条测的是
+    **组合根有没有真的用工厂**。两件事缺一不可。
+
+    只用上一条的话，有人把 `bootstrap._build_stores` 改回「一条共享连接」，
+    它照样绿 —— 因为它自己建的是一个工厂 store，跟组合根怎么装配无关。
+    """
+    import threading
+
+    from yechao.bootstrap import Settings, make_app
+
+    st = Settings.from_paths(data_dir=tmp_path / "d", config_dir=tmp_path / "c")
+    st.ensure_dirs()
+    sqlite_store.init_db(st.db_path)
+    app = make_app(settings=st)
+    try:
+        here = app.store.conn
+        there: list[object] = []
+        t = threading.Thread(target=lambda: there.append(app.store.conn))
+        t.start()
+        t.join()
+        assert there and there[0] is not here, (
+            "组合根装配出来的写连接是**共享**的 —— "
+            "`serve` 的并发写请求会撞出 InterfaceError（约 10% 回 500，"
+            "还夹着假 404）"
+        )
+    finally:
+        app.close()
