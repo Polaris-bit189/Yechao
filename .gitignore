@@ -27,6 +27,11 @@ config/
 *.db-journal
 *.db-wal
 *.db-shm
+# ※ 但**夹具里的** `.db` 要入库：它是「机器上没有 QQ 也能把 qq 源跑通」的那
+# 一份输入（`qq-group-msg.db`）。与上面 `!web/dist/` 是同一条判据 —— 排除
+# 规则宽过头时，用一条显式的放行把它收回来；不收的话，夹具在开发机上好好的、
+# 在 clone 下来的人那里却不存在，而**它是静默消失的**。
+!yechao/infrastructure/sources/fixtures/*.db
 *.log
 *.lock
 

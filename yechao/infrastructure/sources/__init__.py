@@ -49,6 +49,7 @@ from typing import Any, Callable, Iterable
 from yechao.domain.errors import ConfigError
 from yechao.infrastructure.sources.mail_source import build_mail_source
 from yechao.infrastructure.sources.meeting_source import build_meeting_source
+from yechao.infrastructure.sources.qq_source import build_qq_source
 from yechao.infrastructure.sources.subscription_source import build_subscription_source
 from yechao.infrastructure.sources.synth_source import SynthSource
 from yechao.infrastructure.sources.video_source import build_video_source
@@ -89,6 +90,17 @@ REGISTRY: dict[str, Callable[[], Any]] = {
     #: 默认完全遵守；越过要用户在配置里点名，而且越权会先落一行记录。见 `video_source`。
     "video": build_video_source,
     #: 订阅源（小红书 / 抖音 / 快手 / 微博 / 知网）。要一个目标，可能还要登录态与协议。
+    #: QQ 源。读**本机 QQ 的群消息** —— 零操作那条路（QQ 开着就不用做任何事），
+    #: 也认一份同形的 `.db` 夹具（评委机器上没有 QQ 时走这条）。
+    #:
+    #: ※ 名字叫 `qq` 是**如实的**：这个源真的只读 QQ 本地库，那是**它自己的
+    #: 性质**，不是把产品锚在 QQ 上 —— 判据见本模块 docstring 里
+    #: 「名字说的是这个源**是什么**」那一段。
+    #:
+    #: ※ 它**不在 `DEFAULT_SOURCES` 里**，理由与别的源逐字相同：默认源要在
+    #: 离线、无配置的情况下可用（`demo` 那条路的地基）。而 QQ 源要么需要本机
+    #: 装着 QQ，要么需要一个目标。
+    "qq": build_qq_source,
     "subscription": build_subscription_source,
 }
 
