@@ -51,7 +51,7 @@ from yechao.domain.synth import Expect
 
 @dataclass
 class Counts:
-    """一个指标的三件套。⚠️ **分母必须能解释「它代表了多少数据」**。"""
+    """一个指标的三件套。※ **分母必须能解释「它代表了多少数据」**。"""
 
     #: 分子（命中的）。
     hit: int = 0
@@ -62,7 +62,7 @@ class Counts:
     def rate(self) -> float | None:
         """`None` = **分母为 0**，不是 0.0。
 
-        ⚠️ 这是本模块最重要的一个设计：分母为 0 时返回「无法计算」，
+        ※ 本模块最要紧的一条设计就在这：分母为 0 时给的是「算不了」，
         而不是「0%」——后者会被读成「一次都没命中」，而真相是「没测」。
         与隐私页的 `names_were_checked` 是同一条判据。
         """
@@ -80,11 +80,11 @@ class Counts:
 class MetricsReport:
     """一次评测的全部数字。**每一项都要能说出它的分母是谁。**"""
 
-    #: ⚠️ 覆盖率**单列** —— 它不是某一个模型指标的分母，而是「这次跑了多少」。
+    #: ※ 覆盖率**单列** —— 它不是某一个模型指标的分母，而是「这次跑了多少」。
     #: 报它，是为了让人知道后面那些数字代表了多少数据（坑 1）。
     coverage: Counts = field(default_factory=Counts)
     #: 预筛召回：**该保留的**里，真的被保留了的有多少。
-    #: ⚠️ 这是「漏检」的主指标 —— 产品怕的就是漏掉重要通知。
+    #: ※ 这是「漏检」的主指标 —— 产品怕的就是漏掉重要通知。
     prefilter_recall: Counts = field(default_factory=Counts)
     #: 预筛误伤：**该丢的**里，被错误保留的有多少。
     prefilter_false_keep: Counts = field(default_factory=Counts)
@@ -92,10 +92,10 @@ class MetricsReport:
     kind_accuracy: Counts = field(default_factory=Counts)
     #: 截止日抽取：真值说「有截止日」的那些里，真的抽出来了的有多少。
     deadline_recall: Counts = field(default_factory=Counts)
-    #: 活动开始时刻抽取。⚠️ 分母**不含** `start_not_inferable` 的那些（坑 3）。
+    #: 活动开始时刻抽取。※ 分母**不含** `start_not_inferable` 的那些（坑 3）。
     start_recall: Counts = field(default_factory=Counts)
     #: **幻觉率**：模型给出的字段里，源文里找不到依据的比例。
-    #: ⚠️ 分母是**所有被检查过的输入**，不只「有产出的」（坑 4）。
+    #: ※ 分母是**所有被检查过的输入**，不只「有产出的」（坑 4）。
     hallucination: Counts = field(default_factory=Counts)
     #: 脱敏召回：真值标出的号码/姓名里，真的被抹掉的有多少。
     scrub_recall: Counts = field(default_factory=Counts)
@@ -124,7 +124,7 @@ class MetricsReport:
         ]
         if self.excluded_not_applicable:
             out.append(
-                f"⚠️ 有 {self.excluded_not_applicable} 条**判据不适用**，"
+                f"※ 有 {self.excluded_not_applicable} 条**判据不适用**，"
                 f"没有进任何分母（源文里就没有那一格该有的信息）"
             )
         return out
@@ -135,7 +135,7 @@ def prefilter_metrics(
 ) -> tuple[Counts, Counts]:
     """预筛的两个指标。
 
-    ⚠️ **分母是「真值说该保留/该丢的条数」，不是「语料总条数」。**
+    ※ **分母是「真值说该保留/该丢的条数」，不是「语料总条数」。**
     用总条数当分母会把两个不相干的量混起来。
     """
     recall = Counts()
@@ -165,7 +165,7 @@ def scrub_metrics(
 ) -> tuple[Counts, Counts]:
     """脱敏的召回与误伤。
 
-    ⚠️ `flagged_*` 是**真的被抹掉的字符串集合**（由调用方从脱敏结果里收集）。
+    ※ `flagged_*` 是**真的被抹掉的字符串集合**（由调用方从脱敏结果里收集）。
     """
     recall = Counts()
     fp = Counts()
@@ -224,7 +224,7 @@ def model_metrics(
         if exp.kind is None:
             continue
         if mid not in sent_msg_ids:
-            # ⚠️ 没送进模型的**不进任何模型指标的分母**（坑 1）。
+            # ※ 没送进模型的**不进任何模型指标的分母**（坑 1）。
             continue
         p = by_msg.get(mid)
         if p is None:
@@ -252,7 +252,7 @@ def model_metrics(
             if p.get("has_start"):
                 report.start_recall.hit += 1
         elif exp.start_not_inferable:
-            # ⚠️ **坑 3**：源文只给了相对时间 ⇒ 这一格本来就填不进。
+            # ※ **坑 3**：源文只给了相对时间 ⇒ 这一格本来就填不进。
             # 报出来，但不进分母。
             report.excluded_not_applicable += 1
 

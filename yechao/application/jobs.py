@@ -14,9 +14,9 @@
 
 ## `done` 的语义：**最后一条成功批次的序号**
 
-⚠️ 这是前端逐字钉住的契约：「`done` 是「**最后一条成功批次**的序号」，不是
-『已完成批次数』（后端 docstring 原话）。照实显示，**别自己加一**——那会
-变成另一句假话：第 1 批就抛异常时用户会看到 2/N，像『全成了』」。
+※ 前后端在这里对齐了同一条约定：`done` 记的是**最后一批跑成功的批号**，
+不是已经成功了几批。显示时用原值，不要 +1 —— 加一就成了另一种谎报：
+第 1 批就抛异常时进度会显示成 2/N，看着像全做完了。
 
 ⇒ 所以本模块更新 `done` 的**唯一**地方是「一批成功了」。第 n 批成功之后
 `done = n + 1`（1-based 序号）。抛异常的批**不更新** `done`。
@@ -24,10 +24,10 @@
 ## 取消是协作式的
 
 Python 没法从外面杀线程，所以「已请求取消」只在**批与批之间**生效：
-正在飞的那一批会跑完，它停在下一批。
+手上那批会照常跑完，新的批次不再开。
 
-⚠️ 对**已经结束**的作业，取消请求返回 `(False, 终态)`，**不是**报错
-—— 那是「手慢了一步」。前端据此显示「它已经结束了，这一步没赶上」。
+※ 对**已经结束**的作业，取消请求返回 `(False, 终态)`，**不是**报错
+—— 那只是手慢了一步。前端据此显示「任务已经跑完了，这次没赶上」。
 """
 
 from __future__ import annotations
@@ -37,10 +37,31 @@ from typing import Any, Callable
 
 from yechao.domain.errors import YechaoError
 
-RUNNING = "running"
+RUNNING = "running"  # 作业在跑
 DONE = "done"
 FAILED = "failed"
 CANCELLED = "cancelled"
+
+
+def new_run_id() -> str:
+    """一次跑的 id。
+
+    ※ **id 由用例层生成，不是由数据库生成。** 判据：CLI 要把它打印出来
+    （「这次的账落在 run_id=…」），而自增整数只有写进去之后才知道 ——
+    那条路要么多一次查询，要么把抬头写两遍。
+
+    ※ 形状与 `jobs` 表的 `job_id` 一致（12 位十六进制），但**不共用**同一个
+    序列：两者是不同的东西（一个是一次跑的抬头，一个是可取消的批量作业），
+    共用一个 id 空间会让「这个 id 是作业还是跑」要靠猜。
+
+    ※ 用例层可以取随机数，领域层不行（那边连 `uuid` 都不许 import ——
+    `test_领域层不碰_IO` 钉着这条）。放这里而不是放 `bootstrap`：
+    三个用例（extract / ingest / digest）都要用它，而 `bootstrap` 是装配处，
+    不该被用例反向依赖。
+    """
+    import uuid
+
+    return uuid.uuid4().hex[:12]
 
 
 @dataclass
@@ -66,7 +87,7 @@ def run_batches(
     记一笔原因，继续下一批。理由：一个批次的失败（超时、输出不合法）
     不应该让其余批次全部作废。
 
-    ⚠️ **但失败必须记进 `reasons`**，而调用方必须把它带进 `message`
+    ※ **但失败必须记进 `reasons`**，而调用方必须把它带进 `message`
     —— 用户看到的不能只是「跑了 7 批」，而要是「7 批成功、1 批失败，
     原因是 HTTP 503」。
     """
@@ -76,7 +97,7 @@ def run_batches(
 
     for i, item in enumerate(items):
         if cancelled():
-            # ⚠️ 取消时**不更新 done** —— 已完成的进度保留，未完成的不假装。
+            # ※ 取消时**不更新 done** —— 已完成的进度保留，未完成的不假装。
             jobs.update(job_id, state=CANCELLED)
             return result
         try:
@@ -86,14 +107,14 @@ def run_batches(
             result.reasons.append(f"第 {i + 1} 批：{e}")
             continue
         except Exception as e:  # noqa: BLE001
-            # ⚠️ 兜住**所有**异常。一个未预期的异常不该让整个作业崩掉，
+            # ※ 兜住**所有**异常。一个未预期的异常不该让整个作业崩掉，
             # 而它**必须**被记下来（否则就是「静默跳过」）。
             result.failed += 1
             result.reasons.append(f"第 {i + 1} 批：{type(e).__name__}: {e}")
             continue
 
         result.ok += 1
-        # ⚠️ `done` = **最后一条成功批次的序号**（1-based）。
+        # ※ `done` = **最后一条成功批次的序号**（1-based）。
         # 不在这里 +1 之后再 +1，也不要对失败的批更新它。
         jobs.update(job_id, done=i + 1)
         if on_progress is not None:
@@ -107,7 +128,7 @@ def run_batches(
 def _message(r: BatchResult) -> str:
     """进度文案。
 
-    ⚠️ 措辞是**给人看的**，要能一眼分清「全成了」与「有没成的」。
+    ※ 措辞是**给人看的**，要能一眼分清「全成了」与「有没成的」。
     """
     parts: list[str] = []
     if r.ok:
