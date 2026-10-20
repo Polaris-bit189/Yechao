@@ -27,7 +27,7 @@ import sqlite3
 import threading
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterable, Iterator
 
 from yechao.domain.errors import NotFound, ReadOnlyViolation, StorageError
 from yechao.infrastructure.persistence import rows as _rows
@@ -674,6 +674,29 @@ class SqliteStore:
         下一轮自己回来，而那是产品里最惊吓的一种 bug（而且无声）。
         """
         rows = self.conn.execute("SELECT DISTINCT msg_id FROM item_sources")
+        return {int(r["msg_id"]) for r in rows}
+
+    def judged_msg_ids(self, *, kinds: Iterable[str]) -> set[int]:
+        """账里已经判完的消息 id。见端口里那一条的说明。
+
+        ※ `msg_id IS NOT NULL` 是**必须**的：账里有些笔没有 msg_id
+        （`quote_mismatch` 那一类 —— 「对不上」正是「不知道是哪条」）。
+        不加这一条，`None` 会被塞进集合，而它与任何一条消息都不相等 ——
+        症状只是「这个集合大了一点点」，看不出来。
+
+        ※ `DISTINCT` 也是必须的：同一条消息可能在多轮里被记过（比如先
+        `filtered` 后又被人工放回）。不去重的话集合照样对，但集合大小
+        会随轮数增长，而那个数会被日志打出来。
+        """
+        kinds = tuple(kinds)
+        if not kinds:
+            return set()
+        marks = ", ".join("?" for _ in kinds)
+        rows = self.conn.execute(
+            f"SELECT DISTINCT msg_id FROM run_entries "
+            f"WHERE msg_id IS NOT NULL AND kind IN ({marks})",
+            kinds,
+        )
         return {int(r["msg_id"]) for r in rows}
 
     def deleted_item_ids(self) -> set[int]:

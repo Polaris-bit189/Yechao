@@ -41,7 +41,7 @@ import json
 import threading
 import uuid
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any, Iterable, Iterator
 from urllib.parse import unquote, urlsplit
 
 from yechao.domain.errors import (
@@ -773,6 +773,19 @@ class MySQLStore:
         含软删条目 ⇒ 用户删掉的不会被下一轮复活。
         """
         rows = self._rows("SELECT DISTINCT `msg_id` FROM `item_sources`")
+        return {int(r["msg_id"]) for r in rows}
+
+    def judged_msg_ids(self, *, kinds: Iterable[str]) -> set[int]:
+        """账里已经判完的消息 id。判据与 SQLite 那边逐字相同（见端口）。"""
+        kinds = tuple(kinds)
+        if not kinds:
+            return set()
+        marks = ", ".join("%s" for _ in kinds)
+        rows = self._rows(
+            "SELECT DISTINCT `msg_id` FROM `run_entries` "
+            f"WHERE `msg_id` IS NOT NULL AND `kind` IN ({marks})",
+            kinds,
+        )
         return {int(r["msg_id"]) for r in rows}
 
     def deleted_item_ids(self) -> set[int]:

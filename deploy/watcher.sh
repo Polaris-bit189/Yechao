@@ -40,11 +40,25 @@ set -eu
 DATA_DIR="${YECHAO_DATA_DIR:-/app/data}"
 CONFIG_DIR="${YECHAO_CONFIG_DIR:-/app/config}"
 INTERVAL="${YECHAO_WATCH_INTERVAL:-600}"
+# ※ **每轮取哪些源**。不给就是默认源（合成语料）。
+#
+# 为什么这一项非有不可：循环的日志里原本只写「取数：读到 N 条」——
+# 一个永远在读演示语料的 watcher 与一个读真源的 watcher，在
+# `docker compose logs` 里长得一模一样。而这个循环是**无人值守**的，
+# 没人会去逐行核对它到底读了什么。
+SOURCES="${YECHAO_WATCH_SOURCES:-}"
 
 echo "夜抄 · 信息流自动更新"
 echo "  数据目录 $DATA_DIR"
 echo "  配置目录 $CONFIG_DIR"
 echo "  间隔 ${INTERVAL}s（每轮：取数 → 抽取）"
+if [ -n "$SOURCES" ]; then
+    echo "  数据源 $SOURCES"
+else
+    echo "  数据源 默认源（合成语料）"
+    echo "    ※ 这不是你的群消息。要读真实来源，设 YECHAO_WATCH_SOURCES"
+    echo "      （可给多个，逗号分隔；源名见 python -m yechao --help）。"
+fi
 echo
 
 mkdir -p "$DATA_DIR"
@@ -55,7 +69,12 @@ mkdir -p "$DATA_DIR"
 # 所以那一次是唯一能补的地方。
 touch "$DATA_DIR/.watcher-heartbeat"
 
-exec python -m yechao.interfaces.watch \
-    --data-dir "$DATA_DIR" \
-    --config-dir "$CONFIG_DIR" \
-    --interval "$INTERVAL"
+# ※ 用 `set --` 攒参数，而不是把 exec 那一行写两遍（带 --source / 不带）。
+# 两遍的写法一定会漂移：改了其中一遍而忘了另一遍，症状是「配了源的那个容器
+# 与没配的那个行为不一样」，而两边的脚本看起来都是对的。
+set -- --data-dir "$DATA_DIR" --config-dir "$CONFIG_DIR" --interval "$INTERVAL"
+if [ -n "$SOURCES" ]; then
+    set -- "$@" --source "$SOURCES"
+fi
+
+exec python -m yechao.interfaces.watch "$@"

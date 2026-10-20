@@ -166,6 +166,9 @@ USAGE = """\
   --rounds N           跑 N 轮就退出（默认 0 = 一直跑；`--rounds 1` = 跑一轮看看）
   --lock-wait SECONDS  拿不到写者锁时最多等多久（默认 0 = 立刻让给别的写者）
   --budget N           抽取每一趟最多跑几批（默认 200，与 `refine` 一致）
+  --source NAME        每轮取数用哪个源（逗号分隔可给多个）。
+                       不给就取 YECHAO_WATCH_SOURCES，再不给用默认源（合成语料）。
+                       源名不认识会在每一轮里报出来（不静默回落到合成语料）。
 
 退出码（只在 --rounds 跑完时有意义）：
   0  跑成了
@@ -196,6 +199,13 @@ class RoundOutcome:
     #: 取数：读到几条 / 新写入几条 / 哪几个源没读到。
     read: int = 0
     inserted: int = 0
+    #: **逐个源**读到几条。
+    #:
+    #: ※ 只报一个总数是不够的：`docker compose logs watcher` 里那行
+    #: 「取数：读到 N 条」**看不出读的是哪个源** —— 一个永远在读合成语料的
+    #: 循环与一个正常读真源的循环，在日志里长得一模一样。而这个循环是
+    #: 无人值守的，没人会去逐行核对配置。
+    per_source: dict[str, int] = field(default_factory=dict)
     source_errors: list[str] = field(default_factory=list)
     #: 抽取：产出条目 / 批次 / 被追踪而单独抽了一趟的消息数。
     items: int = 0
@@ -227,6 +237,7 @@ def run_round(
     round_no: int,
     lock_wait: float = 0.0,
     budget: int = 200,
+    sources: list[str] | None = None,
 ) -> RoundOutcome:
     """跑**一轮**：拿锁 → 取数 → 抽取 → 放锁。
 
@@ -270,7 +281,7 @@ def run_round(
             return out
 
         try:
-            _ingest(app, out)
+            _ingest(app, out, sources)
             _refine(app, out, budget=budget)
         except Exception as e:  # noqa: BLE001 —— 见下面那段
             # ※ **兜住所有异常**，不是偷懒。一轮里能坏的东西包括
@@ -292,13 +303,19 @@ def run_round(
     return out
 
 
-def _ingest(app: Any, out: RoundOutcome) -> None:
-    """取数。**有源读不到不算这一轮没成**（局部失败不放大），但要记下来。"""
+def _ingest(app: Any, out: RoundOutcome, sources: list[str] | None) -> None:
+    """取数。**有源读不到不算这一轮没成**（局部失败不放大），但要记下来。
+
+    ※ `sources` 是**源名**（`--source` / `YECHAO_WATCH_SOURCES` 递进来的），
+    不给就由组合根用默认源。入口层只递名字、不 import 适配层 ——
+    见 `application/ports.py` 与 `cli._cmd_ingest` 里同一条说明。
+    """
     from yechao.application import ingest as ingest_uc
 
-    outcome = ingest_uc.run(app.ingest_deps())
+    outcome = ingest_uc.run(app.ingest_deps(sources or None))
     out.read = outcome.read
     out.inserted = outcome.inserted
+    out.per_source = dict(outcome.per_source)
     out.source_errors = [f"{name}: {err}" for name, err in outcome.errors]
 
 
@@ -378,6 +395,11 @@ def report(out: RoundOutcome, *, interval: int | None = None) -> None:
         return
 
     _say(f"  · 取数：读到 {out.read} 条，写入 {out.inserted} 条")
+    # ※ **逐个源**报数（与 `ingest` 那条命令同一个形状）。不给 `--source` 时
+    # 走的是默认源，而「我明明想读会议转写，怎么读的是合成语料」必须是
+    # **一眼可见**的 —— 这个循环无人值守，看不见就等于没有。
+    for name in sorted(out.per_source):
+        _say(f"      · 源 {name}：{out.per_source[name]} 条")
     _say(
         f"  · 抽取：条目 {out.items} 条，批次 {out.batches_ok}/{out.batches_total} 成功"
         + (f"，追踪补抽 {out.forced} 条" if out.forced else "")
@@ -403,6 +425,7 @@ def loop(
     rounds: int = 0,
     lock_wait: float = 0.0,
     budget: int = 200,
+    sources: list[str] | None = None,
     sleep: Any = None,
     clock: Any = None,
 ) -> RoundOutcome | None:
@@ -423,7 +446,7 @@ def loop(
         n += 1
         _touch(heartbeat)
         out = run_round(
-            settings, round_no=n, lock_wait=lock_wait, budget=budget
+            settings, round_no=n, lock_wait=lock_wait, budget=budget, sources=sources
         )
         report(out, interval=interval if (rounds <= 0 or n < rounds) else None)
         last = out
@@ -474,7 +497,7 @@ def _parse(argv: Sequence[str]) -> tuple[dict[str, str], list[str]]:
     """
     known = {
         "--data-dir", "--config-dir", "--db", "--interval",
-        "--rounds", "--lock-wait", "--budget",
+        "--rounds", "--lock-wait", "--budget", "--source",
     }
     out: dict[str, str] = {}
     unknown: list[str] = []
@@ -543,6 +566,35 @@ def resolve_interval(opts: dict[str, str]) -> int:
     return value
 
 
+#: 源名的环境变量。**部署时用它**：容器里的循环没有命令行，
+#: 而 `--source` 那个开关是给手动跑一轮的人用的。
+SOURCES_ENV = "YECHAO_WATCH_SOURCES"
+
+
+def resolve_sources(opts: dict[str, str]) -> tuple[list[str], str]:
+    """这一轮用哪些源，以及**它是从哪儿来的**（给启动横幅用）。
+
+    顺序：命令行 > `YECHAO_WATCH_SOURCES` > 默认源（合成语料）。
+
+    ※ 返回「从哪儿来」不是装饰：默认源是**合成语料**，而一个无人值守的循环
+    读着演示数据、每轮都绿，是这条判据要防的那件事。所以用了默认值要能被
+    看出来 —— 见 `main` 里那行横幅。
+    """
+    import os
+
+    raw = opts.get("--source")
+    where = "--source"
+    if raw is None:
+        raw = os.environ.get(SOURCES_ENV)
+        where = SOURCES_ENV
+    if raw is None or not raw.strip():
+        return [], "默认源"
+    names = [n.strip() for n in raw.split(",") if n.strip()]
+    if not names:
+        raise _BadValue(f"{where} 给了一串空白 —— 它应当是一个或多个源名（逗号分隔）")
+    return names, where
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """入口。返回**退出码**（不 `sys.exit` —— 那样测试只能去截 `SystemExit`）。"""
     from yechao.interfaces import cli
@@ -564,6 +616,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         rounds = _int_opt(opts, "--rounds", 0)
         budget = _int_opt(opts, "--budget", 200)
         lock_wait = float(opts.get("--lock-wait", 0.0))
+        sources, sources_where = resolve_sources(opts)
     except (_BadValue, ValueError) as e:
         _fail(str(e))
         _say()
@@ -586,12 +639,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     _say(f"  数据目录 {st.data_dir}")
     _say(f"  配置目录 {st.config_dir}")
     _say(f"  间隔 {interval} 秒" + ("（只跑一轮）" if rounds == 1 else ""))
+    if sources:
+        _say(f"  数据源 {'、'.join(sources)}（来自 {sources_where}）")
+    else:
+        # ※ **用了默认值要说出来**，而且要说清下一步 —— 这个循环是无人值守的，
+        # 一个永远在读合成语料的 watcher 与一个读真源的 watcher，
+        # 在 `docker compose logs` 里长得一模一样。
+        _say("  数据源 默认源（合成语料）")
+        _say(
+            f"    ※ 这不是你的群消息。要读真实来源，用 --source 或 "
+            f"{SOURCES_ENV} 指定（见 python -m yechao --help 的源列表）。"
+        )
     _say()
 
     try:
         last = loop(
             st, interval=interval, rounds=rounds,
-            lock_wait=lock_wait, budget=budget,
+            lock_wait=lock_wait, budget=budget, sources=sources or None,
         )
     except KeyboardInterrupt:
         _say()

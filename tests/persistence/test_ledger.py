@@ -195,6 +195,125 @@ def test_跑一轮之后账在库里_且按消息查得到(store) -> None:
     assert e.reason == "ModelError", "原因码应当是异常类型名，不是散文"
 
 
+class _HalfModel:
+    """一批里**只抽出一条** —— 另一条是「模型看过、里面没有」。
+
+    ※ 为什么需要这个桩：`[]`（一条都没抽出来）在本项目里是**真失败**
+    （`parse_empty`，下一轮要重试），所以「看过但没抽出东西」只发生在
+    「一批里抽出了一些、但不是每一条」这种情形。
+    """
+
+    _ROWS = (
+        "```json\n"
+        '[{"kind":"todo","title":"交材料",'
+        '"quote":"请在明天下午三点前把材料交到教务处（第 1 条）",'
+        '"detail":null,"deadline":null,"start":null,"place":null,"amount":null}]\n'
+        "```"
+    )
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+        self.calls += 1
+        return self._ROWS
+
+
+def test_判完的结局只有那几种(store) -> None:
+    """※ 这一条守的是**不能算进去**的那几个 —— 每一个对应一种「算进去就会丢东西」。
+
+      · `batch_failed` —— 一次网络抖动不该变成永久丢失
+      · `unprocessed`  —— 它存在的意义就是「没跑到，下一轮继续」
+    """
+    from yechao.application import extract as ex
+
+    store.conn.execute(
+        "INSERT INTO runs (run_id, kind, started_at, finished_at, status, seen, produced)"
+        " VALUES ('r1', 'refine', 1, 2, 'ok', 0, 0)"
+    )
+    kinds = (ex.FILTERED, ex.SPAM, ex.NO_ITEM, ex.NO_KIND,
+             ex.BATCH_FAILED, ex.UNPROCESSED)
+    for i, kind in enumerate(kinds, start=1):
+        store.conn.execute(
+            "INSERT INTO run_entries (run_id, kind, msg_id, group_id, reason)"
+            " VALUES ('r1', ?, ?, ?, 'x')",
+            (kind, i, GROUP),
+        )
+    # 没有 msg_id 的那一笔（`quote_mismatch`）不该被算进来
+    store.conn.execute(
+        "INSERT INTO run_entries (run_id, kind, group_id, reason)"
+        " VALUES ('r1', 'quote_mismatch', ?, 'not_in_batch')",
+        (GROUP,),
+    )
+    store.conn.commit()
+
+    judged = store.judged_msg_ids(kinds=ex.JUDGED_KINDS)
+    assert judged == {1, 2, 3, 4}, (
+        f"判完的集合是 {sorted(judged)} —— 判据与 `JUDGED_KINDS` 那一段说明不符"
+    )
+
+
+def test_判完的消息下一轮不再重判(store) -> None:
+    """※ 这一条守的是**代价**，不是正确性。
+
+    观察到什么现象：`covered_msg_ids()` 只认「产出过条目」的消息，于是被预筛
+    刷掉的那些每一轮都要重新过一遍预筛。实测（本机 QQ 库 49.2 万条）：一轮
+    150 秒，其中 114 秒花在重新预筛那 49 万条上，而第二轮只新写了 21 条 ——
+    它**不报错**，看起来只是「有点慢」。
+
+    判据：第二轮**看不到**第一轮已经判完的消息。
+    """
+    store.upsert_messages([
+        PendingMessage(msg_id=1, group_id=GROUP, ts=1000, sender="某人",
+                       content="好的"),  # 预筛会丢（纯应答）
+    ])
+    model = _DeadModel()
+    first = extract_uc.run(_deps(store, model))
+    assert [e.kind for e in store.entries_of_message(1)] == ["filtered"]
+    assert model.calls == 0, "前提：这一条根本没走到模型"
+
+    second = extract_uc.run(_deps(store, _DeadModel()))
+    assert second.batches_total == 0, (
+        "判完的消息第二轮又被送去切批了 —— 「已处理」的定义没生效"
+    )
+
+
+def test_模型看过却没抽出东西的下一轮不再送(store) -> None:
+    """同一批里抽出了别的、但没抽出这一条 ⇒ 这一条也算判完。
+
+    ※ 这一笔账原来没有，于是那些消息**每一轮都会被重新送去模型**。
+    """
+    _seed(store, (1, 2))          # 同一个群 ⇒ 同一批
+    model = _HalfModel()
+    extract_uc.run(_deps(store, model))
+    assert model.calls == 1
+    assert [e.kind for e in store.entries_of_message(2)] == ["no_item"], (
+        "「看过了、里面没有」没留下账 —— 账要能回答「这条为什么没进条目」"
+    )
+
+    second = extract_uc.run(_deps(store, _HalfModel()))
+    assert second.batches_total == 0, "看过的那一条第二轮又被送进去了"
+
+
+def test_没跑到的下一轮还会再跑(store) -> None:
+    """※ 与上一条**相反**的那一半：预算没跑到的**必须**留下。
+
+    算进去的症状是「一次预算不够 = 那几条永远不被抽取」，而它不报错 ——
+    日报里只是少了几条。
+    """
+    for i in range(4):
+        _seed(store, (i + 1,), group=GROUP + i)   # 不跨群 ⇒ 一批一个群
+
+    extract_uc.run(_deps(store, _DeadModel()), budget=1)
+    # 第 1 批跑了（失败），第 2、3、4 批没跑到
+    assert [e.kind for e in store.entries_of_message(4)] == ["unprocessed"]
+
+    second = extract_uc.run(_deps(store, _DeadModel()), budget=1)
+    assert second.batches_total > 0, (
+        "没跑到的那些第二轮不见了 —— 一次预算不够变成了永久丢失"
+    )
+
+
 def test_预筛丢弃的账带判据名(store) -> None:
     """预筛丢掉的那一条，事后要能说清是**哪条判据**丢的。"""
     store.upsert_messages([

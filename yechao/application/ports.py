@@ -46,7 +46,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Iterable, Protocol, runtime_checkable
 
 
 # ── 时钟 ────────────────────────────────────────────────────────────
@@ -181,6 +181,21 @@ class ItemRepository(Protocol):
         为什么在 `ItemRepository` 而不是 `MessageRepository`：它问的是
         「哪些消息**已经产出过条目**」—— 主语是条目，数据来源是
         `item_sources`。调用点写的也是 `deps.items`。
+        """
+        ...
+
+    def judged_msg_ids(self, *, kinds: Iterable[str]) -> set[int]:
+        """账里已经**判完**的消息 id。
+
+        `kinds` 是「哪些结局算判完」—— **由调用方给**，不在这儿写死：
+        那个集合是**产品判断**（一次网络抖动算不算判完？），而它只有一处
+        定义（`application/extract.py::JUDGED_KINDS`）。写死在这里就是两处，
+        漂移的症状是「某类消息每一轮都被重判一遍」，而它不报错。
+
+        ※ 为什么要有这个方法：`covered_msg_ids()` 只认「产出过条目」的消息。
+        被预筛刷掉的、模型看过却没抽出东西的，永远不算处理过 ⇒ 每一轮都把
+        全库重读重筛。实测（本机 QQ 库 49.2 万条）一轮 150 秒，其中 114 秒
+        花在重新预筛那 49 万条上，而第二轮只新写了 21 条。
         """
         ...
 

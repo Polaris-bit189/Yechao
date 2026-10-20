@@ -86,6 +86,26 @@ GATE_CLEARED = "gate_cleared"  # 闸门清掉了字段
 BATCH_FAILED = "batch_failed"  # 整批失败
 OVERSIZED = "oversized"        # 单条超长（静默截断的高危来源）
 UNPROCESSED = "unprocessed"    # 没跑到（预算耗尽 / 中途取消）
+NO_ITEM = "no_item"            # 批跑过了，这条里没抽出条目
+
+#: 一条消息**已经判完**的结局。
+#:
+#: ※ 为什么要这个集合：`covered_msg_ids()` 只认「产出过条目」的消息，于是
+#: **被预筛刷掉的**与**模型看过却没抽出东西的**那两类永远不算处理过 ——
+#: 每一轮都把全库重读、重筛一遍。实测（本机 QQ 库 49.2 万条）：一轮 150 秒，
+#: 其中 114 秒花在重新预筛那 49 万条上，而第二轮只新写了 21 条。
+#: 代价随库增长，而且**不报错** —— 它看起来只是「有点慢」。
+#:
+#: ※ 为什么这几个**不算**判完（每一个都对应一种「算进去就会丢东西」）：
+#:   · `batch_failed` —— 一次网络抖动不该变成永久丢失（下一轮必须重试）
+#:   · `unprocessed`  —— 它存在的意义就是「没跑到，下一轮继续」
+#:   · `oversized`    —— 它是**警告**，那条消息照样进了批
+#:   · `gate_cleared` —— 它产出过条目，已经被 `covered` 覆盖
+#:   · `quote_mismatch` —— 那一笔**没有 msg_id**（「对不上」正是「不知道是哪条」）
+#:
+#: ※ **代价写在明处**：改了预筛规则（群 tier、动作词）之后，**旧消息不会被重判**
+#: —— 新规则只对之后读到的消息生效。这是「每轮不再重筛全库」换来的，见上面那段。
+JUDGED_KINDS = (FILTERED, SPAM, NO_ITEM, NO_KIND)
 
 
 @dataclass
@@ -335,9 +355,14 @@ def run(
     #
     # ⇒ 判据：**只要一条消息已经有条目引用它（无论那个条目是否被软删），
     # 就不再处理它。** 「含软删」是关键：排除软删会让删掉的条目复活。
+    # ※ 「已处理」是**两半**：产出过条目的（`covered`）与账里已经判完的
+    # （`judged`）。只有前者的话，被预筛刷掉的消息每一轮都会重新过一遍预筛
+    # —— 而那一遍的代价随库增长。见 `JUDGED_KINDS`。
     covered = deps.items.covered_msg_ids()
-    if covered:
-        raw = [m for m in raw if m.msg_id not in covered]
+    judged = deps.items.judged_msg_ids(kinds=JUDGED_KINDS)
+    done = covered | judged
+    if done:
+        raw = [m for m in raw if m.msg_id not in done]
     seen = len(raw)
     if not raw:
         # ※ **没有待处理的消息也要留下账。** 「我跑了 refine，怎么什么都
@@ -702,6 +727,11 @@ def _run_batch(
         return True
 
     local_year = _year_of(deps.clock.now())
+    #: 这一批**之前**已经产出的来源条数 —— 用它切出「这一批产出的」。
+    #: `outcome.sources` 是跨批累积的，不切的话上几批的产出会算到这一批头上。
+    sources_before = len(outcome.sources)
+    #: 这一批里「模型给了东西但类目判不出来」的消息 —— 它们已经有账了。
+    undecidable: set[int] = set()
 
     for cand in candidates:
         src = match_quote(cand.quote, list(batch.messages))
@@ -727,6 +757,7 @@ def _run_batch(
                 NO_KIND, msg_id=src.msg_id, group_id=batch.group_id,
                 batch_no=batch_no, reason="no_kind",
             )
+            undecidable.add(src.msg_id)
             continue
 
         label, slug = resolve_kind(cand.kind, kinds_map)
@@ -749,6 +780,28 @@ def _run_batch(
 
         outcome.items.append(result.item)
         outcome.sources.append(SourceRef(item_id=0, msg_id=src.msg_id, quote=cand.quote))
+
+    # ── 记账：这一批里**看过、但没抽出条目**的那些 ──────────────────
+    #
+    # ※ 这一笔原来没有，而它的缺席是有代价的：`extract.run` 的「已处理」只认
+    # 「产出过条目」的消息 ⇒ 模型看过却没抽出东西的那些**每一轮都会被重新送去
+    # 模型**。补上它之后，账还多回答了一问 ——「这条消息为什么没进条目」，
+    # 答案从「查无此条」变成「看过了，里面没有要办的事」。
+    #
+    # ※ **只记 `must_produce`**（预筛保留的那些）：`batch.messages` 里还有
+    # `with_context` 补进来的邻居，它们的 docstring 写着「只作上下文，不产出
+    # 条目」—— 把邻居也标成「看过、没有」，会让一条本该被抽出来的通知因为
+    # 「它那次只是陪衬」而永远不再被看第二眼。
+    produced = {s.msg_id for s in outcome.sources[sources_before:]}
+    for m in batch.messages:
+        if must_produce is None or m.msg_id not in must_produce:
+            continue
+        if m.msg_id in produced or m.msg_id in undecidable:
+            continue
+        outcome.ledger.record(
+            NO_ITEM, msg_id=m.msg_id, group_id=m.group_id,
+            batch_no=batch_no, reason="no_item",
+        )
 
     return True
 

@@ -222,6 +222,13 @@ services:
       # 「间隔没按我写的来」。`0` 尤其不能当成「不睡」：那会变成忙等，
       # 把 CPU 打满。「跑一轮就退」有它自己的开关（`--rounds 1`）。
       YECHAO_WATCH_INTERVAL: "${YECHAO_WATCH_INTERVAL:-600}"
+      # 每轮取哪些源（逗号分隔）。
+      # ※ 这一项**可以**为空（`${VAR:-}`）：空 = 默认源（合成语料），
+      # 而入口会把这个默认值**显式打进日志**（见 `watch.main` 的横幅与
+      # 每一轮的「源 X：N 条」）。这一条与 `YECHAO_WATCH_INTERVAL` 那一档
+      # 的取舍不同：间隔取默认值是产品要的，而**读演示数据**不是 ——
+      # 所以后者宁可空着、由入口喊出来。
+      YECHAO_WATCH_SOURCES: "${YECHAO_WATCH_SOURCES:-}"
     volumes:
       - "${YECHAO_DATA_DIR:?}:${YECHAO_DATA_DIR:?}"
       - "${YECHAO_CONFIG_DIR:?}:${YECHAO_CONFIG_DIR:?}"

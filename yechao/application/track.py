@@ -259,7 +259,12 @@ def run(
     # 被追踪的人**只要还在窗口里**，每一轮都会多跑一趟空趟 ——
     # 报告里那句「N 条消息单独抽了一趟」于是永远不为零，而它**一条都没抽**。
     # 那是「一个数字看起来正常、其实什么都没说」的形状。
-    covered = deps.items.covered_msg_ids()
+    # ※ 与 `extract.run` 用**同一个**「已处理」定义（含账里已判完的）——
+    # 两处口径不同的话，被追踪的人**只要还在窗口里**，每一轮都会多跑一趟
+    # 空趟，而报告里那句「N 条消息单独抽了一趟」永远不为零。
+    covered = deps.items.covered_msg_ids() | deps.items.judged_msg_ids(
+        kinds=extract_uc.JUDGED_KINDS
+    )
     window = [
         m for m in deps.messages.pending_messages(since=since, until=until)
         if m.msg_id not in covered
