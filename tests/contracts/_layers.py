@@ -1,6 +1,6 @@
 """分层扫描器 —— 供 `tests/contracts/` 下的判据共用。
 
-⚠️ 这个模块**只做扫描**，不做判断。判断在各自的测试里，因为每条判据的
+※ 这个模块**只做扫描**，不做判断。判断在各自的测试里，因为每条判据的
 "为什么"不一样，混在一起以后没人说得清哪条在守什么。
 
 ## 为什么用 AST 而不是正则
@@ -45,7 +45,7 @@ class Module:
 
     @property
     def is_nontrivial(self) -> bool:
-        """⚠️ `__init__.py` 不算 —— 见 `scan()` 的说明。"""
+        """※ `__init__.py` 不算 —— 见 `scan()` 的说明。"""
         return not self.is_package_init
 
 
@@ -114,7 +114,7 @@ def _layer_of(mod_name: str) -> str | None:
 def scan(package_root: Path = PACKAGE_ROOT) -> list[Module]:
     """扫全部 .py，返回每个模块的导入图。
 
-    ⚠️ `__init__.py` 被标出来但**不排除** —— 调用方自己决定要不要算它。
+    ※ `__init__.py` 被标出来但**不排除** —— 调用方自己决定要不要算它。
     排除它的理由：一个只有 `__init__.py` 的层，会让"这一层有东西可守"
     看起来成立，而实际上判据扫的是零个有意义的文件。
     """

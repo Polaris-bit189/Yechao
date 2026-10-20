@@ -39,7 +39,7 @@ def _read(path: Path) -> str:
 
 
 def test_部署文件都在() -> None:
-    """⚠️ 空转自检。
+    """※ 空转自检。
 
     下面每一条判据都要读这几个文件。它们不在时，那些判据要么会抛
     （好），要么会扫到一个空字符串然后**恒为真**（坏）。
@@ -55,7 +55,7 @@ def test_部署文件都在() -> None:
 
 
 #: compose 里 `${VAR:?msg}` 的写法 = **必填**。`${VAR:-}` = 可空。
-#: ⚠️ 只认**变量名全大写且以已知前缀开头**的写法。
+#: ※ 只认**变量名全大写且以已知前缀开头**的写法。
 #: 原来写的是 `\${([A-Z_][A-Z0-9_]*):\?}` —— 它在**这个测试文件**里
 #: 也匹配到了我自己写的那句 `"${VAR:?}"`，于是 `VAR` 被当成一个必填项，
 #: 断言要求 `.env.example` 里有它。一个**判据自己造的假阳性**。
@@ -66,13 +66,13 @@ _REQUIRED = re.compile(r"\$\{(YECHAO_[A-Z0-9_]*):\?")
 def _compose_required_vars() -> set[str]:
     """从 compose 的**声明侧**读必填变量。
 
-    ⚠️ 这是「从基础设施声明里读」那半边 —— 不是手写一张表。
+    ※ 这是「从基础设施声明里读」那半边 —— 不是手写一张表。
     """
     return set(_REQUIRED.findall(_read(DEPLOY / "docker-compose.yml")))
 
 
 def test_compose_真的声明了必填项() -> None:
-    """⚠️ **空转自检** —— 上一条的判据如果读到空集，它恒为真。"""
+    """※ **空转自检** —— 上一条的判据如果读到空集，它恒为真。"""
     required = _compose_required_vars()
     assert required, (
         "compose 里一个 `${VAR:?}` 都没有读到 —— "
@@ -84,7 +84,7 @@ def test_compose_真的声明了必填项() -> None:
 
 
 def test_每个必填变量都有说明和示例值() -> None:
-    """⚠️ 必填项**要么有默认值，要么必须在部署脚本的前置检查里被显式验证**
+    """※ 必填项**要么有默认值，要么必须在部署脚本的前置检查里被显式验证**
 
     这里守后一半：`.env.example` 要给每一个必填变量一个示例值。
     缺一个，用户照文档部署会在 compose 中止 —— 而错误信息在另一个工具的
@@ -106,7 +106,7 @@ def test_每个必填变量都有说明和示例值() -> None:
 
 
 def test_没有多余的变量_在_example_里却不在_compose_里() -> None:
-    """⚠️ 反向也要查。
+    """※ 反向也要查。
 
     一个 `.env.example` 里有、而 compose 完全没用的变量，会让人以为
     「我设了它就会生效」—— 而它什么都没做。**静默无效的配置**与
@@ -118,7 +118,7 @@ def test_没有多余的变量_在_example_里却不在_compose_里() -> None:
     declared = set(re.findall(r"^\s*([A-Z_][A-Z0-9_]*)=", _read(env_example), re.MULTILINE))
     compose = _read(DEPLOY / "docker-compose.yml")
 
-    # ⚠️ `COMPOSE_*` / `DOCKER_*` 是 compose 自己认的，不该要求它们出现在文件里
+    # ※ `COMPOSE_*` / `DOCKER_*` 是 compose 自己认的，不该要求它们出现在文件里
     unused = {
         v for v in declared
         if v not in compose and not v.startswith(("COMPOSE_", "DOCKER_"))
@@ -133,12 +133,12 @@ def test_没有多余的变量_在_example_里却不在_compose_里() -> None:
 
 
 def test_Dockerfile_的_ENTRYPOINT_指向那个初始化脚本() -> None:
-    """⚠️ ****：
+    """※ ****：
 
     > 首启初始化脚本写好了，但**没有任何地方引用它**。于是它从不执行，
     > 而依赖它的服务单元全部起不来。
 
-    ⚠️ 这条判据的价值在它的**方向**：它从 **Dockerfile** 里读 ENTRYPOINT，
+    ※ 这条判据的价值在它的**方向**：它从 **Dockerfile** 里读 ENTRYPOINT，
     去确认那个路径**存在**。它不是在测试里写一句「entrypoint 应该在」——
     那样写的话，改了 Dockerfile 之后测试还是绿的。
     """
@@ -150,7 +150,7 @@ def test_Dockerfile_的_ENTRYPOINT_指向那个初始化脚本() -> None:
     parts = [p.strip().strip('"').strip("'") for p in m.group(1).split(",")]
     script = parts[0]
     assert script, "ENTRYPOINT 是空的"
-    # ⚠️ 从 ENTRYPOINT 的**指令行**里读的，不是全文搜 —— 见上面那条的注释。
+    # ※ 从 ENTRYPOINT 的**指令行**里读的，不是全文搜 —— 见上面那条的注释。
     # 这一条本来就是指令行级的，所以不怕注释。
 
     # 路径是相对镜像 WORKDIR 的
@@ -161,7 +161,7 @@ def test_Dockerfile_的_ENTRYPOINT_指向那个初始化脚本() -> None:
 
 
 def test_初始化脚本真的做了初始化() -> None:
-    """⚠️ 脚本存在但什么都不做，等于不存在。
+    """※ 脚本存在但什么都不做，等于不存在。
 
     这里断言它**真的**做了首启该做的那件事（配置为空时从模板填充）。
     用的是文本判据 —— 因为真跑它需要 docker，而这条要在每次 pytest 里跑。
@@ -174,7 +174,7 @@ def test_初始化脚本真的做了初始化() -> None:
 
 
 def test_初始化脚本不含_CRLF() -> None:
-    """⚠️ **CRLF 会让容器里的 `sh` 报一个与真实原因无关的错。**
+    """※ **脚本带 CRLF 时，容器里的 `sh` 会报出一个和真正病因无关的错。**
 
     症状是 `/bin/sh: ./deploy/entrypoint.sh: not found` —— 看起来像
     「文件不存在」，而它明明存在。Windows 上编辑过的脚本很容易带 CRLF，
@@ -191,12 +191,12 @@ def test_初始化脚本不含_CRLF() -> None:
 
 
 def test_Dockerfile_把_web_dist_拷进镜像() -> None:
-    """⚠️ 没有它，容器里的 `serve` 只能回 501 —— 而「网页能打开」是复现红线。
+    """※ 没有它，容器里的 `serve` 只能回 501 —— 而「网页能打开」是复现红线。
 
     这个失败**在本地永远不会出现**（本地有 `web/dist/`），所以必须由
     一条读 Dockerfile 的判据来守。
     """
-    # ⚠️ **判据必须只看真的指令行，不看注释。**
+    # ※ **判据必须只看真的指令行，不看注释。**
     #
     # 第一版写的是 `assert "web/dist" in dockerfile` —— 而 Dockerfile 的
     # **注释里**也提到了 `web/dist`（解释为什么不需要 Node）。
@@ -219,7 +219,7 @@ def test_Dockerfile_把_web_dist_拷进镜像() -> None:
 
 
 def test_web_dist_真的在仓库里() -> None:
-    """⚠️ 镜像里的 COPY 只在**构建**时才有东西可拷。
+    """※ 镜像里的 COPY 只在**构建**时才有东西可拷。
 
     而 `web/dist/` 被 `.gitignore` 的 `dist/` 规则挡住了 —— 除非专门放行。
     这条断言它**真的在仓库里**，而不只是「本地有这个目录」。
@@ -234,19 +234,64 @@ def test_web_dist_真的在仓库里() -> None:
 # ── 判据四：健康检查探的是一个真会读库的端点 ────────────────────────
 
 
-def test_健康检查不走静态首页() -> None:
-    """⚠️ 首页是静态文件 —— 它 200 **不代表**数据库通、配置读得到。
+def _service_block(compose: str, name: str) -> str:
+    """切出某一个服务的段落。
+
+    ※ 为什么要切：这份 compose 里有**两个**服务（应用与 Redis），
+    而两个都带 `healthcheck`。在整份文件里 `re.search("healthcheck:...")`
+    会命中**第一个**出现的那段 —— 现在的书写顺序恰好让第一个是应用，
+    但那是**运气**，不是判据：谁把 redis 挪到前面，这条判据就会去检查
+    Redis 的探活，而它对应用的健康检查什么都没说（却仍然是绿的）。
+    """
+    m = re.search(
+        rf"^  {re.escape(name)}:\n(.*?)(?=^  \S|\Z)",
+        compose,
+        re.MULTILINE | re.DOTALL,
+    )
+    assert m, f"compose 里找不到服务 {name}"
+    return m.group(1)
+
+
+def _health_probe(compose: str) -> str:
+    block = _service_block(compose, "yechao")
+    m = re.search(r"healthcheck:\s*\n\s*test:\s*\[([^\]]*)\]", block)
+    assert m, "yechao 服务没有 healthcheck —— 一个不探活的部署等于没验证过"
+    return m.group(1)
+
+
+def test_健康检查探的是_api_health() -> None:
+    """※ 首页是静态文件 —— 它 200 **不代表**数据库通、配置读得到。
 
     一个只探静态页的健康检查会让「服务起了但库是坏的」看起来像健康
     （「健康检查里报『未挂载』而没人发现，
     说明那个健康检查字段本身也没被验证过」）。
-    """
-    compose = _read(DEPLOY / "docker-compose.yml")
-    m = re.search(r"healthcheck:\s*\n\s*test:\s*\[([^\]]*)\]", compose)
-    assert m, "compose 里没有 healthcheck —— 一个不探活的部署等于没验证过"
 
-    probe = m.group(1)
-    assert "/api/" in probe, (
-        "健康检查探的不是一个会读库的 API —— 它探的可能是静态页，"
-        "而那会让「库坏了」看起来像健康。"
+    ※ 而探 `/api/items?limit=1` 只比探首页好一点点：它证明了「库能读出
+    东西」，但**验不到缓存**，也**分不清**「服务活着但库坏了」与
+    「服务根本没起来」。⇒ 改成 `/api/health`：它同时回答服务 / 库 / 缓存
+    三件事，而库挂了时它回 **503**。
+    """
+    probe = _health_probe(_read(DEPLOY / "docker-compose.yml"))
+    assert "/api/health" in probe, (
+        f"健康检查探的不是 `/api/health`，而是：{probe}\n"
+        f"那个端点同时回答「服务活着 / 库通不通 / 缓存是哪个后端」，"
+        f"而 `/api/items` 只证明库能读出东西。"
+    )
+
+
+def test_健康检查在非_2xx_上会失败() -> None:
+    """※ 一条**恒为绿**的健康检查比没有检查更危险。
+
+    机制是：`urllib.request.urlopen` 在 4xx/5xx 上**抛异常** ⇒ 进程退出码
+    非零 ⇒ 容器被判为 unhealthy。所以探活脚本里**不能**把异常吞掉 ——
+    一个 `try: ... except: pass` 的探活永远成功，而它在报告里是绿的。
+
+    判据是文本的（真跑它需要 docker），但它抓的正是那个形态。
+    """
+    probe = _health_probe(_read(DEPLOY / "docker-compose.yml"))
+    assert "urlopen" in probe, (
+        f"探活没有用 `urlopen` —— 它是「非 2xx 即失败」的机制所在：{probe}"
+    )
+    assert "except" not in probe, (
+        f"探活脚本里有 `except` —— 那会把失败吞掉，检查就恒为绿了：{probe}"
     )
