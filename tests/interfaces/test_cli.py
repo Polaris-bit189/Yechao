@@ -476,6 +476,43 @@ def test_ingest_读不到源时也说清账落在哪(workdir, monkeypatch, capsy
     assert "run_id=" in text, "失败那条路上没给账的线索"
 
 
+def test_doctor_的失败行不会跑到日志最前面(tmp_path) -> None:
+    """※ stdout 在**重定向 / 管道 / 被 docker 捕获**时是块缓冲，而 stderr 不是。
+
+    不 flush 的症状：所有 `×` 行会**跳到日志最前面**，与它们所属的段落脱节
+    （实测：`doctor > log.txt 2>&1` 之后，失败行全在文件开头）。而部署之后
+    `docker compose logs` 就是这种合并流 —— 这个项目里日志是唯一能看的东西。
+
+    这里用**子进程 + 合并两个流**来复现那种形状（同进程的 capsys 分不出这个）。
+    """
+    cfg = tmp_path / "config"
+    cfg.mkdir()
+    # 端口 1 上不会有东西 —— 连接会立刻被拒。
+    (cfg / "settings.toml").write_text(
+        "[llm]" + chr(10)
+        + 'base_url = "http://127.0.0.1:1/v1/chat/completions"' + chr(10)
+        + 'model = "x"' + chr(10),
+        encoding="utf-8",
+    )
+    r = subprocess.run(
+        [
+            sys.executable, "-m", "yechao", "doctor",
+            "--data-dir", str(tmp_path / "data"),
+            "--config-dir", str(cfg),
+        ],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding="utf-8", errors="replace",
+    )
+    out = r.stdout
+    段 = out.find("模型端点")
+    失败 = out.find("连不上")
+    assert 段 >= 0 and 失败 >= 0, out[-600:]
+    assert 失败 > 段, (
+        "失败行跑到了它所属的段落之前 —— stdout 没有 flush，"
+        "重定向 / docker logs 里会全部堆在最前面" + chr(10) + out[-600:]
+    )
+
+
 def test_doctor_报最近一次跑的账(workdir, capsys) -> None:
     """※ 自检的用途是「出问题时先看哪儿」，而「上一轮跑了什么」是第一个。
 

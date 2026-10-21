@@ -278,12 +278,16 @@ def run_today(
 # ── 打印 ────────────────────────────────────────────────────────────
 
 
+# ※ **每一行都 flush。** stdout 在被重定向 / 管道 / 被 docker 捕获时是**块缓冲**，
+# 而 stderr 是无缓冲的 —— 于是所有 `×` 行会**跳到日志最前面**，与它们所属的段落
+# 脱节（实测：`doctor > log.txt 2>&1` 之后，失败行全在文件开头）。
+# 这个循环无人值守，日志是唯一能看的东西，顺序错位会让人对错段。
 def _say(msg: str = "") -> None:
-    print(msg)
+    print(msg, flush=True)
 
 
 def _fail(msg: str) -> None:
-    print(f"  ! {msg}", file=sys.stderr)
+    print(f"  ! {msg}", file=sys.stderr, flush=True)
 
 
 def _field(label: str, value: str) -> str:
