@@ -33,6 +33,9 @@ redis = ["redis>=5"]
 # —— `browser_cookies` 里**延迟导入**它，没装时报错并说清怎么装，不回落成
 # 「读不到」（那会让你以为浏览器里根本没登录）。Firefox 的库不加密，用不上它。
 browser = ["cryptography>=42"]
+# ※ 读 QQ 的加密消息库也要它（SQLCipher 的逐页 AES）。与 `browser` 是同一个
+# 包、同一个理由：**它不在默认依赖里**，因为三步复现不能要求装它。
+qq = ["cryptography>=42"]
 
 dev = [
     "pytest>=8",

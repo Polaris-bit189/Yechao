@@ -64,7 +64,7 @@ import struct
 from dataclasses import dataclass
 from pathlib import Path
 
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from yechao.domain.errors import ConfigError
 
 #: 外壳头大小（明文那一段）。与 `qq_locate.WRAPPER_SIZE` 是同一个数 ——
 #: 这里不 import 它，因为那是**定位**那一层的事；两处都只是「1024」这个事实。
@@ -109,6 +109,38 @@ class _Params:
 
     def label(self) -> str:
         return f"{self.page_hmac}/{self.kdf_hmac}"
+
+
+#: 缺依赖时给人看的那一段。
+#:
+#: ※ 要说清三件事：**缺什么**、**怎么装**、**不装会怎样**。少第三件的话，
+#: 用户会以为整个程序都要它而放弃 —— 其实只有这一个源需要。
+_MISSING_CRYPTO = (
+    "要读 QQ 的加密消息库，得先装 `cryptography`："
+    "`pip install cryptography`（或 `pip install \"yechao[qq]\"`）。\n"
+    "※ 只有**这一个源**需要它：合成语料、网页、邮件、会议、视频、订阅这些源与"
+    "三步复现（demo → refine → serve）都不需要。"
+)
+
+
+def _aes_cbc(key: bytes, iv: bytes):
+    """拿到一个 AES-256-CBC 解密器。**在这里才 import `cryptography`。**
+
+    ※ 为什么不在模块顶层 import：`cryptography` 进的是**可选依赖**
+    （`pyproject.toml` 的 `[project.optional-dependencies]`），而默认那一份必须
+    能在什么都没配的机器上跑通三步复现。顶层一句 `import cryptography` 会让
+    `import yechao.bootstrap` 直接失败（`sources/__init__` → `qq_source` →
+    `qq_ntdb` → 这里），于是 `python -m yechao demo` 起不来，而报错是一句与 QQ
+    毫无关系的 `ModuleNotFoundError`。
+
+    ※ 与 `browser_cookies._aesgcm` 同一条判据：延迟导入、缺了**报错并说清怎么装**，
+    不回落成「读不到」。
+    """
+    try:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    except ImportError as e:  # pragma: no cover - 依赖缺失时才走
+        raise ConfigError(_MISSING_CRYPTO) from e
+    return Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
 
 
 def _read_at(path: Path, offset: int, size: int) -> bytes:
@@ -182,7 +214,7 @@ def decrypt_page(page: bytes, aes_key: bytes, params: _Params, *, first: bool) -
         raise ValueError("页参数不对：reserve 比一页还大")
     ct = page[skip : skip + enc_len]
     iv = page[skip + enc_len : skip + enc_len + SALT_SIZE]
-    body = Cipher(algorithms.AES(aes_key), modes.CBC(iv)).decryptor().update(ct)
+    body = _aes_cbc(aes_key, iv).update(ct)
     full = bytearray(PAGE_SIZE)
     if first:
         # ※ 前 16 字节的魔数是被 salt 顶掉的，补回来这一页才是标准 SQLite 页。

@@ -21,6 +21,9 @@ import hashlib
 import hmac
 import os
 import pathlib
+import subprocess
+import sys
+import textwrap
 import sqlite3
 import struct
 from datetime import datetime, timezone
@@ -464,6 +467,55 @@ def test_按页解密能还原明文(加密库):
     p, 明文, key = 加密库
     assert qq_ntdb.key_opens_library(p, key)
     assert qq_ntdb.decrypt_library(p, key) == 明文
+
+
+def test_没装_cryptography_时三步复现那条路照样通(tmp_path) -> None:
+    """※ **红线**：评委 `pip install -e .`（**不装可选依赖**）之后必须能跑。
+
+    `cryptography` 刻意不进 `dependencies`（见 `pyproject.toml`），而 QQ 源与
+    「读浏览器登录态」都要它。如果哪个模块在**顶层** import 它，导入链
+    `bootstrap → sources → qq_source → qq_ntdb → qq_cipher` 就会直接
+    `ModuleNotFoundError` —— 于是 `python -m yechao demo` 起不来，而报错是一句
+    与 QQ 毫无关系的「找不到 cryptography」。
+
+    ※ 用**子进程 + 挡住 cryptography 的 meta_path** 模拟那种机器（本机装着它，
+    同进程里测不出来）。与 `browser_cookies` 那条同一条取向：不装就是没装。
+    """
+    code = textwrap.dedent(
+        """
+        import importlib.abc, sys
+        class Blocker(importlib.abc.MetaPathFinder):
+            def find_spec(self, name, path, target=None):
+                if name == "cryptography" or name.startswith("cryptography."):
+                    raise ImportError(f"No module named {name!r}")
+                return None
+        sys.meta_path.insert(0, Blocker())
+        from yechao.interfaces.cli import main
+        raise SystemExit(main(["demo", "--data-dir", sys.argv[1]]))
+        """
+    )
+    r = subprocess.run(
+        [sys.executable, "-c", code, str(tmp_path)],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    assert r.returncode == 0, (
+        "没装 cryptography 时 `demo` 跑不起来 —— 三步复现那条红线断了：\n"
+        f"{r.stderr[-800:]}"
+    )
+
+
+def test_没装_cryptography_时报错并说清怎么装(加密库, monkeypatch) -> None:
+    """※ 与 `browser_cookies` 同一条判据：延迟导入、缺了**报错并说清怎么装**，
+    不回落成「读不到」—— 回落的话症状是「QQ 明明开着，它说读不到」。
+    """
+    p, _, key = 加密库
+    # ※ 塞的是**子模块的全名**：`from a.b import c` 找的是 `a.b` 那一项，
+    #   而它早就被顶上的 import 装进 `sys.modules` 了 —— 只把 `a` 置 None 的话，
+    #   那条 import 会**照样成功**（判据就空转了）。
+    monkeypatch.setitem(sys.modules, "cryptography.hazmat.primitives.ciphers", None)
+
+    with pytest.raises(ConfigError, match="pip install cryptography"):
+        qq_ntdb.decrypt_library(p, key)
 
 
 def test_口令不对就打不开(加密库):
