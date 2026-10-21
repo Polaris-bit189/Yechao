@@ -20,7 +20,38 @@ python -m yechao serve     # 网页打开
 
 `demo` 不联网、不需要任何密钥：它**走源层**取仓库自带的合成语料（见 `ingest`）、建库、
 生成默认配置与群清单快照，并把预筛「保留多少、丢弃多少、为什么」打印出来。
-`refine` 需要先配好模型端点；`serve` 默认打开 <http://127.0.0.1:9000>，端口被占用时会自动往上找一个，并把实际地址打印出来。
+`serve` 默认打开 <http://127.0.0.1:9000>，端口被占用时会自动往上找一个，并把实际地址打印出来。
+
+### 第二步（`refine`）需要一个模型端点
+
+`demo` 与 `serve` 都不需要模型；**`refine` 需要**，而且它**没有离线兜底** ——
+没配端点时它会拒绝跑并说清缺什么。这一步刻意不静默跳过：跳过的话你会拿到一份
+「今天群里很安静」口吻的结果，而真相是根本没抽。
+
+最短的一条路（本地、免费、原文不出这台机器）：
+
+```bash
+ollama serve                 # 另开一个终端（首次安装见 https://ollama.com/）
+ollama pull qwen3:8b         # 约 5.2 GB；换别的 OpenAI 兼容模型也行
+```
+
+然后把 `config/settings.toml` 里这两行取消注释（模板里它们本来就是写好的）：
+
+```toml
+[llm]
+base_url = "http://127.0.0.1:11434/v1/chat/completions"
+model = "qwen3:8b"
+```
+
+※ **任何 OpenAI 兼容端点都可以**，不限于 Ollama —— 把 `base_url` 与 `model`
+换成你那一家的即可。密钥走环境变量 `YECHAO_API_KEY`，**不写进配置文件**
+（配置文件会被导出、会被提交）。
+
+※ 模型选多大的：8B 级能把三步复现跑完（实测）。更大更稳，但首次加载与每批
+推理都更慢；**换模型只改 `model` 这一行**。
+
+※ `digest` **不需要**模型：模型不可用时它会退化成机械行 —— 条目照样在，
+只是一句话的措辞不是模型写的，而且报告里看得出来。
 
 ### 从别的来源取数
 
@@ -56,7 +87,8 @@ CLI 还提供 `ingest`、`ledger`、`export`、`metrics`、`doctor`、`cloud`，
 - Python ≥ 3.11（使用了标准库 `tomllib`）。
 - `pip install -e .`；或手动 `pip install fastapi uvicorn`。
 - 开发测试：`pip install -e ".[dev]"`（pytest、httpx）。
-- 可选：本地 [Ollama](https://ollama.com/)，用于跑 `refine` / `digest`。
+- **模型端点**（`refine` 需要，见上面「第二步」）：任何 OpenAI 兼容端点都行；
+  本地 [Ollama](https://ollama.com/) 是最省事的一条路。`digest` 没有它也能跑（退化成机械行）。
 
 **不装 Node 也能看网页。** `serve` 服务的是仓库里已构建的 `web/dist/`，不是前端源码。若 `web/dist/` 不存在，`serve` 会明确返回 501 并提示构建方式，而不是静默给一个 404。
 
