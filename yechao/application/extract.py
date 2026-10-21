@@ -343,6 +343,7 @@ def run(
     budget: int = 200,
     cancel: Any = None,
     on_progress: Any = None,
+    rejudge: bool = False,
 ) -> ExtractOutcome:
     """跑一轮抽取。
 
@@ -380,7 +381,9 @@ def run(
     # （`judged`）。只有前者的话，被预筛刷掉的消息每一轮都会重新过一遍预筛
     # —— 而那一遍的代价随库增长。见 `JUDGED_KINDS`。
     covered = deps.items.covered_msg_ids()
-    judged = deps.items.judged_msg_ids(kinds=JUDGED_KINDS)
+    # ※ `rejudge=True` 时**不看**账里那些判完的记录 —— 但 `covered` 照旧：
+    # 已经产出过条目的消息再判一遍会产出**重复条目**，那不是重判，那是重抽。
+    judged = set() if rejudge else deps.items.judged_msg_ids(kinds=JUDGED_KINDS)
     done = covered | judged
     if done:
         raw = [m for m in raw if m.msg_id not in done]

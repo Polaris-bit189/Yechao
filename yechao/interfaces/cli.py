@@ -93,6 +93,9 @@ USAGE = """\
   --run RUN_ID      ledger 专用：只看这一次跑的账
   --msg MSG_ID      ledger 专用：只看这一条消息的账（为什么没进条目）
   --limit N         refine 专用：最多跑几批（默认 200）；ledger 专用：列几次（默认 10）
+  --since-days N    refine 专用：只看最近 N 天（默认全看）
+  --rejudge         refine 专用：**不跳过**账里已经判完的消息，重新判一遍。
+                    改了预筛规则（群 tier、动作词）之后用它 —— 否则旧消息不会被重判
 """
 
 
@@ -167,6 +170,15 @@ class Args:
         self.limit: int | None = None
         self.dry_run: bool = False
         self.fresh: bool = False
+        #: `refine --rejudge`：**不跳过**账里已经判完的消息。
+        #:
+        #: ※ 为什么需要它：「已处理」包含「账里已经判过」（预筛丢弃 / 模型看过
+        #: 没抽出东西 / 类目判不出来）。改了预筛规则之后，那些旧消息**不会**被
+        #: 重判 —— 而那正是换来「每轮不再重筛全库」的代价。这个开关是那条出口。
+        self.rejudge: bool = False
+        #: `refine --since-days N`：只看最近 N 天。重判一条几万条的老库时，
+        #: 不设它会连几个月前的消息一起过一遍预筛。
+        self.since_days: int | None = None
         #: 选中的数据源名（`--source`，可重复、也可用逗号分隔）。
         #:
         #: ※ 收的是**名字**不是实现。CLI 不许 import 适配层
@@ -197,6 +209,10 @@ class Args:
                 self.dry_run = True
                 i += 1
                 continue
+            if a == "--rejudge":
+                self.rejudge = True
+                i += 1
+                continue
             if a == "--fresh":
                 # ※ 只有 `demo` 认它（在 `main` 里校验，别的命令给了就报错 ——
                 # 静默忽略一个「删库」开关是最不该有的那种沉默）。
@@ -219,7 +235,7 @@ class Args:
                 continue
             if a in (
                 "--data-dir", "--config-dir", "--db", "--port", "--limit",
-                "--run", "--msg", "--host",
+                "--run", "--msg", "--host", "--since-days",
             ):
                 if i + 1 >= len(args):
                     self.unknown.append(a)
@@ -251,6 +267,21 @@ class Args:
                     self.run_id = val
                 elif a == "--msg":
                     self.msg_id = int(val)
+                elif a == "--since-days":
+                    # ※ 先校验再赋值：`--since-days 0` 走 `unknown`（退出码 2），
+                    # 而字段保持 `None` —— 一个被拒的值还留在字段上，
+                    # 下一个人读 `args.since_days` 时会以为它是生效的。
+                    try:
+                        v = int(val)
+                    except ValueError:
+                        self.unknown.append(a)
+                        break
+                    if v <= 0:
+                        # ※ 非正数**不当成「不设窗口」**：那会让「我写了 0 想跑
+                        # 全部」变成一件静默的事，而它与「我写错了」长得一样。
+                        self.unknown.append(a)
+                        break
+                    self.since_days = v
                 i += 2
                 continue
             if not a.startswith("-"):
@@ -642,6 +673,14 @@ def _cmd_refine(args: Args) -> int:
 
     _say(f"  端点 {llm.base_url}")
     _say(f"  模型 {llm.model}")
+    # ※ 这两个开关**要打印出来**：它们改变的是「哪些消息会被看」，
+    # 而「我明明加了 --rejudge，怎么还是一条都没动」必须是看得出原因的。
+    since = None
+    if args.since_days:
+        since = app.clock.now() - args.since_days * 86400
+        _say(f"  窗口 最近 {args.since_days} 天")
+    if args.rejudge:
+        _say("  重判 不跳过账里已判完的消息（改过预筛规则时用）")
 
     # ※ 追踪规则在这里读一次并**说出来**：一条规则不响时，第一个要问的
     # 就是「它到底被读进去了没有」—— 而 `config/tracks.toml` 写坏了会被
@@ -653,7 +692,10 @@ def _cmd_refine(args: Args) -> int:
 
     try:
         outcome = track_uc.run(
-            app.extract_deps(), rules, budget=args.limit or 200
+            app.extract_deps(), rules,
+            budget=args.limit or 200,
+            since=since,
+            rejudge=args.rejudge,
         )
         _report_extract(outcome, st)
     finally:

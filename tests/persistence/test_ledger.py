@@ -295,6 +295,31 @@ def test_模型看过却没抽出东西的下一轮不再送(store) -> None:
     assert second.batches_total == 0, "看过的那一条第二轮又被送进去了"
 
 
+def test_rejudge_把判完的消息重新纳回来(store) -> None:
+    """※ 这是「已处理 = 账里已判完」那条判据的**出口**。
+
+    改了预筛规则（群 tier、动作词）之后，旧消息本来不会被重判 —— 而那正是
+    「每轮不再重筛全库」换来的代价。`rejudge=True` 把那些记录**这一次**不当数。
+
+    ※ 但 `covered`（产出过条目的）**照旧跳过**：再判一遍会产出**重复条目**
+    —— 那不叫重判，那叫重抽。
+    """
+    store.upsert_messages([
+        PendingMessage(msg_id=1, group_id=GROUP, ts=1000, sender="某人",
+                       content="好的"),  # 预筛会丢（纯应答）
+    ])
+    first = extract_uc.run(_deps(store, _DeadModel()))
+    assert store.get_run(first.run_id).seen == 1
+
+    second = extract_uc.run(_deps(store, _DeadModel()))
+    assert store.get_run(second.run_id).seen == 0, "判完的又进来了 —— 判据没生效"
+
+    third = extract_uc.run(_deps(store, _DeadModel()), rejudge=True)
+    assert store.get_run(third.run_id).seen == 1, (
+        "--rejudge 没把它重新纳进来 —— 改了预筛规则之后旧消息就再没有回头路"
+    )
+
+
 def test_预算不够时先跑最新的(store) -> None:
     """※ 预算不够跑完全部批次时，先跑**最新的**那一批。
 

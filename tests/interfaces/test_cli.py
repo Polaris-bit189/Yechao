@@ -476,6 +476,23 @@ def test_ingest_读不到源时也说清账落在哪(workdir, monkeypatch, capsy
     assert "run_id=" in text, "失败那条路上没给账的线索"
 
 
+def test_开关解析_rejudge_与_since_days() -> None:
+    """※ `--since-days` 的**非正数**不能被当成「不设窗口」：那会让「我写了 0
+    想跑全部」变成一件静默的事，而它与「我写错了」长得一样。
+    """
+    from yechao.interfaces.cli import Args
+
+    a = Args(["refine", "--rejudge", "--since-days", "7"])
+    assert a.rejudge is True
+    assert a.since_days == 7
+    assert not a.unknown
+
+    for bad in ("0", "-1", "abc"):
+        b = Args(["refine", "--since-days", bad])
+        assert b.since_days is None
+        assert "--since-days" in b.unknown, f"--since-days {bad} 应当被当成参数错误"
+
+
 def test_consent_命令能签协议且记在配置目录里(tmp_path) -> None:
     """※ 报错文案让人跑 `python -m yechao consent accept` —— 那条命令必须存在。
 
