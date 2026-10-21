@@ -57,7 +57,7 @@ class _Model:
         self.dead = dead
         self.calls = 0
 
-    def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         self.calls += 1
         if self.dead:
             from yechao.domain.errors import ModelError

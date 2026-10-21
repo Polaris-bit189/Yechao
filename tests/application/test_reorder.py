@@ -52,7 +52,7 @@ class _Model:
         self.mapping = mapping
         self.calls = 0
 
-    def complete(self, *, system: str, user: str, max_tokens: int = 2048) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         import json
 
         self.calls += 1
@@ -168,7 +168,7 @@ def test_取消之后重排会停在批与批之间(store) -> None:
     class _CancellingModel:
         """第一次被调时就请求取消当前那个重排作业。"""
 
-        def complete(self, *, system: str, user: str, max_tokens: int = 2048) -> str:
+        def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
             import json
 
             row = store.conn.execute(

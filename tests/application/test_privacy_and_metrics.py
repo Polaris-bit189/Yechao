@@ -153,7 +153,7 @@ def test_发送者昵称里的姓名不许出网_且审计要覆盖它() -> None
         """桩：**不回任何条目** —— 于是 `_run_batch` 走完审计那一步就返回，
         不需要 clock / config 这些只有解析成功后才用到的东西。"""
 
-        def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+        def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
             captured["user"] = user
             return ""
 
@@ -174,9 +174,19 @@ def test_发送者昵称里的姓名不许出网_且审计要覆盖它() -> None
             return build_extract_user(messages, scrubbed)
 
     audit = _Audit()
+    # ※ `config` 不能是 None：抽取要问它「当前的类目有哪些」（结构化输出的
+    # 枚举来自那里）。这条用例只关心脱敏，但依赖必须是真的 —— 拿 None 顶替，
+    # 一旦某处真的用到它就会炸在一个与脱敏无关的地方。
+    from yechao.domain.categories import default_categories
+    from yechao.domain.config_models import CategorySet
+
+    class _Cfg:
+        def categories(self):
+            return CategorySet(categories=default_categories(), aliases={})
+
     deps = extract.ExtractDeps(
         messages=None, items=None, model=_Model(), audit=audit,
-        clock=None, config=None, prompt=_Prompt(),
+        clock=None, config=_Cfg(), prompt=_Prompt(),
     )
     batch = Batch(
         group_id=820000001,

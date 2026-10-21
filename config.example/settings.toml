@@ -18,7 +18,7 @@
 
 # [llm]
 # base_url = "http://127.0.0.1:11434/v1/chat/completions"
-# model = "qwen3:8b"
+# model = "yechao-llm"       # 本队部署用的那个；换成你 `ollama pull` 下来的任意模型
 #
 # ※ enable_thinking 是**三态**：
 #   · 不写这个键  = **不发这个字段**（通用 OpenAI 端点最安全的形状）

@@ -485,8 +485,14 @@ def 链路(tmp_path_factory):
 
     stub = _StubModel()
 
-    def _complete(self, *, system: str, user: str, max_tokens: int = 2048) -> str:
-        return stub.complete(system=system, user=user, max_tokens=max_tokens)
+    def _complete(
+        self, *, system: str, user: str, max_tokens: int = 2048,
+        response_schema: dict | None = None,
+    ) -> str:
+        return stub.complete(
+            system=system, user=user, max_tokens=max_tokens,
+            response_schema=response_schema,
+        )
 
     mp.setattr(OpenAIClient, "complete", _complete)
 

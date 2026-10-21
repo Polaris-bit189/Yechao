@@ -61,7 +61,7 @@ class _Stub:
         self.boom_times = boom_times
         self.calls = 0
 
-    def complete(self, *, system: str, user: str, max_tokens: int = 2048) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         self.calls += 1
         if self.calls <= self.boom_times:
             raise RuntimeError("桩：这一轮故意坏掉")
@@ -82,7 +82,10 @@ def stub(monkeypatch):
     """把真客户端的 `complete` 换成桩。**其余一切照旧。**"""
     s = _Stub()
 
-    def _complete(self, *, system: str, user: str, max_tokens: int = 2048) -> str:
+    def _complete(
+        self, *, system: str, user: str, max_tokens: int = 2048,
+        response_schema: dict | None = None,
+    ) -> str:
         return s.complete(system=system, user=user, max_tokens=max_tokens)
 
     monkeypatch.setattr(OpenAIClient, "complete", _complete)
@@ -234,7 +237,10 @@ def test_一轮失败不打死循环_而且失败看得见(settings, monkeypatch
     """
     boom = _Stub(boom_times=1)
 
-    def _complete(self, *, system: str, user: str, max_tokens: int = 2048) -> str:
+    def _complete(
+        self, *, system: str, user: str, max_tokens: int = 2048,
+        response_schema: dict | None = None,
+    ) -> str:
         return boom.complete(system=system, user=user, max_tokens=max_tokens)
 
     monkeypatch.setattr(OpenAIClient, "complete", _complete)
@@ -263,7 +269,10 @@ def test_模型连不上是降级_不是没跑成(settings, monkeypatch) -> None
     """
     from yechao.domain.errors import ModelError
 
-    def _complete(self, *, system: str, user: str, max_tokens: int = 2048) -> str:
+    def _complete(
+        self, *, system: str, user: str, max_tokens: int = 2048,
+        response_schema: dict | None = None,
+    ) -> str:
         raise ModelError("连不上模型端点 http://127.0.0.1:9/v1/chat/completions")
 
     monkeypatch.setattr(OpenAIClient, "complete", _complete)

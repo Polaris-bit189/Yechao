@@ -80,7 +80,7 @@ class _Model:
         self.mute = mute
         self.calls = 0
 
-    def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         self.calls += 1
         if self.dead:
             raise ModelError("连不上模型端点 http://127.0.0.1:9/v1/chat/completions")

@@ -74,6 +74,7 @@ class ModelConfig:
     extra_body: dict[str, Any] = field(default_factory=dict)
 
 
+
 def _pick_finish_reason(payload: dict[str, Any]) -> str:
     """从响应里取 `finish_reason`。
 
@@ -159,12 +160,21 @@ class OpenAIClient:
 
     def __init__(self, config: ModelConfig) -> None:
         self.config = config
+        #: 这个端点**不认** `response_format` 时置上 —— 之后不再每批白试一次。
+        self._no_schema = False
 
     @property
     def enable_thinking(self) -> bool | None:
         return self.config.enable_thinking
 
-    def build_body(self, *, system: str, user: str, max_tokens: int) -> dict[str, Any]:
+    def build_body(
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int,
+        response_schema: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """拼请求体。**单独一个方法**，这样「发不发 enable_thinking」
         能被测试直接断言 —— 而不是只在真发请求时才看得出来。
         """
@@ -177,6 +187,25 @@ class OpenAIClient:
             "max_tokens": max_tokens,
             "temperature": 0,
         }
+        # ── 结构化输出（**由调用方声明形状**）─────────────────────────
+        #
+        # 依据（实测）：Ollama 把 JSON schema 编成 GBNF 文法，模型**物理上**
+        # 输出不了结构以外的东西。改之前模型会把标题填进类目（`"社团招新"`），
+        # 那一条于是被静默丢弃；改之后只能是合法枚举之一。
+        # 这消掉的是「模型回一段散文、整批记 parse_empty」那一种失败 ——
+        # 它不是靠提示词求来的，是解码约束。
+        #
+        # ※ 形状**不由客户端猜**：同一个端点被抽取、日报、云端复核、重排共用，
+        # 而它们的输出形状各不相同。谁要结构化输出，谁把 schema 递进来。
+        if response_schema is not None and not self._no_schema:
+            body["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "response",
+                    "strict": True,
+                    "schema": response_schema,
+                },
+            }
         # ※ **不是** `if self.config.enable_thinking:` —— 见模块 docstring 三。
         if self.config.enable_thinking is not None:
             body["enable_thinking"] = self.config.enable_thinking
@@ -201,9 +230,35 @@ class OpenAIClient:
         body.update(self.config.extra_body)
         return body
 
-    def complete(self, *, system: str, user: str, max_tokens: int = 2048) -> str:
-        body = self.build_body(system=system, user=user, max_tokens=max_tokens)
-        payload = self._post(body)
+    def complete(
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int = 2048,
+        response_schema: dict[str, Any] | None = None,
+    ) -> str:
+        body = self.build_body(
+            system=system, user=user, max_tokens=max_tokens,
+            response_schema=response_schema,
+        )
+        try:
+            payload = self._post(body)
+        except ModelError as e:
+            # ※ **端点不认 `response_format` 时回落，而不是让整批失败。**
+            # 本项目明确支持「任何 OpenAI 兼容端点」，而 `json_schema` 是
+            # 较新的那一档；不认它的端点会回 400 / 422。
+            # 回落要**只试一次**：`_no_schema` 记下来，后面的批不再每批白撞。
+            # ※ 状态码在  里（ 存的是字典，不是属性）——
+            # 写 `e.status` 的话，任何**没有**带状态码的 ModelError
+            # （假模型、别的抛点）都会在这里炸成 AttributeError。
+            status = e.context.get("status")
+            if "response_format" not in body or status not in (400, 422):
+                raise
+            body.pop("response_format", None)
+            payload = self._post(body)
+            # 去掉之后跑成了 ⇒ 这个端点确实不认它，记住。
+            self._no_schema = True
 
         reason = _pick_finish_reason(payload)
         text = extract_text(payload)

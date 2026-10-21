@@ -88,7 +88,7 @@ class _DeadModel:
     def __init__(self) -> None:
         self.calls = 0
 
-    def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         self.calls += 1
         raise ModelError("端点连不上")
 
@@ -99,7 +99,7 @@ class _MuteModel:
     def __init__(self) -> None:
         self.calls = 0
 
-    def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         self.calls += 1
         return "好的，我看看。"  # 没有 JSON
 
@@ -214,7 +214,7 @@ class _HalfModel:
     def __init__(self) -> None:
         self.calls = 0
 
-    def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         self.calls += 1
         return self._ROWS
 
@@ -437,7 +437,7 @@ class _MixedModel:
     def __init__(self) -> None:
         self.calls = 0
 
-    def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         self.calls += 1
         # 第 2 条消息自成一个群（切批不跨群）⇒ 它独占一批 ⇒ 那一批回空数组。
         if "第 2 条" in user:

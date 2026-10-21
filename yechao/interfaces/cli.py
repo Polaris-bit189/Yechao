@@ -661,7 +661,7 @@ def _cmd_refine(args: Args) -> int:
         _say()
         _say("    [llm]")
         _say('    base_url = "http://127.0.0.1:11434/v1/chat/completions"')
-        _say('    model = "qwen3:8b"')
+        _say('    model = "yechao-llm"   # 换成你实际有的那个')
         _say()
         _say("  或者用命令行临时指定（不改文件）：")
         _say("    set YECHAO_DATA_DIR=... ")

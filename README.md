@@ -32,7 +32,9 @@ python -m yechao serve     # 网页打开
 
 ```bash
 ollama serve                 # 另开一个终端（首次安装见 https://ollama.com/）
-ollama pull qwen3:8b         # 约 5.2 GB；换别的 OpenAI 兼容模型也行
+ollama pull qwen3:14b        # ① 评委机器上：**任何一个**模型都行，这一行只是举例
+                             # ② 本队部署用的是 `yechao-llm`（本机那份 bonsai-2:27b，
+                             #    是自己建的，公共库里 pull 不到）
 ```
 
 然后把 `config/settings.toml` 里这两行取消注释（模板里它们本来就是写好的）：
@@ -40,7 +42,7 @@ ollama pull qwen3:8b         # 约 5.2 GB；换别的 OpenAI 兼容模型也行
 ```toml
 [llm]
 base_url = "http://127.0.0.1:11434/v1/chat/completions"
-model = "qwen3:8b"
+model = "yechao-llm"        # 填你实际 pull 下来的那个（本队部署 = yechao-llm）
 ```
 
 ※ **任何 OpenAI 兼容端点都可以**，不限于 Ollama —— 把 `base_url` 与 `model`

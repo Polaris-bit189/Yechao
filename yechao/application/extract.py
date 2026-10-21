@@ -636,6 +636,62 @@ def _with_id(item: Item, item_id: int) -> Item:
     return dataclasses.replace(item, item_id=item_id)
 
 
+def _response_schema(kinds: tuple[str, ...]) -> dict[str, Any] | None:
+    """抽取输出的 JSON schema；一个类目都没有时返回 `None`（不约束）。
+
+    ## 为什么这块在**用例层**而不是客户端里
+
+    形状是**调用方**的事：同一个模型端点被抽取、日报、云端复核、重排共用，
+    而它们的输出形状各不相同。客户端只负责「把这个 schema 发出去」。
+
+    ## 为什么枚举来自配置而不是写死
+
+    类目是**用户能改**的（`categories.toml` + 网页上的增删）。写死一份的症状
+    正是「新加的类目永远抽不出来」，而它看起来像「模型漏了」。这里每次调用
+    现读 `deps.config.categories()`，漂移不可能发生。
+
+    ## 形状与解析器对齐
+
+    解析器（`parse_reply`）首选 `{"items": [...]}`（也认裸数组，那是给
+    「不支持 schema 的端点」留的旧路）。这里钉成同一个首选形状。
+
+    ※ `strict: True` 要求所有属性都在 `required` 里、且
+    `additionalProperties: false` —— 于是「可省略的字段」只能写成
+    `["string", "null"]` 并且必须出现（模型会多吐一些 `null`，
+    `_opt_str` 对 `null` 与缺字段一视同仁）。
+    """
+    if not kinds:
+        return None
+    return {
+        "type": "object",
+        "properties": {
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {"type": "string", "enum": list(kinds)},
+                        "title": {"type": "string"},
+                        "quote": {"type": "string"},
+                        "detail": {"type": ["string", "null"]},
+                        "deadline": {"type": ["string", "null"]},
+                        "start": {"type": ["string", "null"]},
+                        "place": {"type": ["string", "null"]},
+                        "amount": {"type": ["string", "null"]},
+                    },
+                    "required": [
+                        "kind", "title", "quote",
+                        "detail", "deadline", "start", "place", "amount",
+                    ],
+                    "additionalProperties": False,
+                },
+            }
+        },
+        "required": ["items"],
+        "additionalProperties": False,
+    }
+
+
 def _run_batch(
     batch: chunking.Batch,
     deps: ExtractDeps,
@@ -703,7 +759,9 @@ def _run_batch(
 
     # ── 调模型 ──
     try:
+        kinds = tuple(c.slug for c in deps.config.categories().categories)
         raw = deps.model.complete(
+            response_schema=_response_schema(kinds),
             system=deps.prompt.EXTRACT_SYSTEM,
             user=user,
             max_tokens=deps.prompt.EXTRACT_MAX_TOKENS,

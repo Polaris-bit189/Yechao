@@ -527,7 +527,24 @@ class ModelClient(Protocol):
          是三态（`None` = 不发这个字段）。
     """
 
-    def complete(self, *, system: str, user: str, max_tokens: int = 2048) -> str: ...
+    def complete(
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int = 2048,
+        response_schema: dict[str, Any] | None = None,
+    ) -> str:
+        """跑一次补全，返回**原始文本**。
+
+        `response_schema` 非空 ⇒ 请求里带 `response_format`（结构化输出）。
+        端点不认它时**回落**到不带 schema 再试一次 —— 本项目明确支持「任何
+        OpenAI 兼容端点」，而结构化输出是较新的一档。
+
+        ※ 形状由**调用方**声明：同一个端点被抽取、日报、云端复核、重排共用，
+        它们的输出形状各不相同。
+        """
+        ...
 
     @property
     def enable_thinking(self) -> bool | None: ...

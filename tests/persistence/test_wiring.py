@@ -70,7 +70,7 @@ class _Model:
     def __init__(self) -> None:
         self.calls = 0
 
-    def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         self.calls += 1
         return (
             '[{"kind":"know","title":"测试条目","quote":"这是一条测试消息",'
