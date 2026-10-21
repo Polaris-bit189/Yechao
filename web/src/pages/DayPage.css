@@ -76,10 +76,35 @@
    因为 li 的行高也占位置），读起来像一整块。加一条发丝线把它切成节，
    同时把外间距收回来 —— 线本身代替了一部分空白，总高不变。 */
 .paper__h2 {
+  position: relative;
   margin: var(--s3) 0 var(--s2);
+  padding-left: 13px;
   color: var(--fg);
   font-size: var(--fs-note);
   letter-spacing: var(--track-label);
+}
+
+/* 节标题左侧一道**朱砂起首**。
+ *
+ * ※ 这是「批注」的做法：古籍里批语另起一行、用朱笔，与正文的墨色分开。
+ *   放在这里刚好——每一节都是对当天的一小段归纳，本来就带着「批」的意味。
+ *
+ * ※ 颜色从 `--danger` 混出来而不是写死一个红：朱砂是**暖红**，而各主题的
+ *   红本就不同（宵偏冷、雾偏艳、樱偏粉），混出来才不打架。 */
+.paper__h2::before {
+  content: '';
+  position: absolute;
+  top: 0.42em;
+  left: 0;
+  width: 3px;
+  height: 0.78em;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--danger) 62%, var(--fg-3));
+}
+
+/* 有上边框的那几节，朱砂起首要跟着下移（边框占了 padding-top）。 */
+.paper__h2:not(:first-child)::before {
+  top: calc(var(--s3) + 0.42em);
 }
 
 .paper__h2:not(:first-child) {

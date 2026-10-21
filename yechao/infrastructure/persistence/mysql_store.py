@@ -741,8 +741,10 @@ class MySQLStore:
         return row_to_item(row) if row else None
 
     def sources_of(self, item_id: int) -> list[dict[str, Any]]:
+        # ※ `m.source` 与 sqlite_store 那一份逐列一致 —— 两个后端读的是
+        # 同一批列，少一列的症状是「换库之后来源标记不见了」。
         rows = self._rows(
-            "SELECT m.msg_id, m.ts, m.sender, m.group_id, m.content, s.quote "
+            "SELECT m.msg_id, m.ts, m.sender, m.group_id, m.source, m.content, s.quote "
             "FROM `item_sources` s JOIN `messages` m ON m.msg_id = s.msg_id "
             "WHERE s.item_id = %s ORDER BY m.ts",
             (item_id,),
@@ -750,6 +752,22 @@ class MySQLStore:
         # ※ DictCursor 出来的**已经是 dict**；`dict(r)` 是防御性的：
         # 换游标类（比如 `SSDictCursor`）时它照样成立。
         return [dict(r) for r in rows]
+
+    def counts_by_source(self) -> list[dict[str, Any]]:
+        """库里消息按来源分组。与 sqlite_store 那一份**同序同形** ——
+        两个后端排序不同会让同一份数据在两台机器上排成两样。"""
+        rows = self._rows(
+            "SELECT `source`, COUNT(*) AS `n`, MAX(`ts`) AS `last_ts` "
+            "FROM `messages` GROUP BY `source` ORDER BY `n` DESC, `source`"
+        )
+        return [
+            {
+                "source": r["source"] or "",
+                "messages": int(r["n"]),
+                "last_ts": int(r["last_ts"] or 0),
+            }
+            for r in rows
+        ]
 
     def counts_by_kind(self) -> dict[str, int]:
         rows = self._rows(

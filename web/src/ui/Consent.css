@@ -1,0 +1,252 @@
+/* 第三方账号授权协议：读 → 签署。
+ *
+ * ※ 与 Status.css 同一条纪律：这一份**自带全部类名**，不借 SetupPage.css
+ * 的 `.note` / `.acts` / `.msg`。借了能用，只是因为打包之后所有 CSS
+ * 落在同一张表上 —— 那种依赖在别处改动时会静默失效。 */
+
+.csign__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-bottom: var(--s3);
+}
+
+.csign__title {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+}
+
+.csign__ver {
+  margin-top: 2px;
+  color: var(--fg-3);
+  font-size: var(--fs-tag);
+  letter-spacing: var(--track-label);
+}
+
+.csign__ok {
+  color: var(--fg-3);
+  font-size: var(--fs-note);
+}
+
+/* 「还没接受 / 签的是旧版」用告警色。这两个状态会让带凭据的源**拒绝启动**，
+ * 所以它不该与「已接受」长得一样。 */
+.csign__no {
+  color: var(--danger);
+  font-size: var(--fs-note);
+}
+
+.csign__why {
+  margin-bottom: var(--s4);
+  padding: var(--s3);
+  border-left: 2px solid var(--accent);
+  color: var(--fg-2);
+  font-size: var(--fs-note);
+  line-height: var(--lh-loose);
+}
+
+.csign__warn {
+  margin-bottom: var(--s4);
+  padding: var(--s3);
+  border: 1px solid var(--danger);
+  border-radius: var(--r2);
+  background: var(--danger-weak);
+  color: var(--danger);
+  font-size: var(--fs-note);
+}
+
+.csign__warn p {
+  margin-top: var(--s2);
+}
+
+.csign__path {
+  font-family: var(--mono);
+  font-size: var(--fs-tag);
+  word-break: break-all;
+}
+
+/* ── 正文 ──────────────────────────────────────────────────── */
+
+/* 正文自己滚，不把整页撑长：签署区（勾选框 + 按钮）要**始终在视野里**
+ * —— 滚到文档最底下才看见按钮的话，那个勾与它读的内容就脱钩了。 */
+.csign__doc {
+  max-height: 46vh;
+  margin-bottom: var(--s4);
+  padding: var(--s4) var(--s5);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  background: var(--surface);
+  color: var(--fg-2);
+  font-size: var(--fs-note);
+  line-height: var(--lh-loose);
+  /* 一份要逐字读的文档，选中的时候要能看清选到哪。 */
+  user-select: text;
+}
+
+.csign__h1 {
+  margin: 0 0 var(--s3);
+  color: var(--fg);
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+
+.csign__h2 {
+  margin: var(--s5) 0 var(--s2);
+  color: var(--fg);
+  font-size: var(--fs-hero);
+  font-weight: 700;
+}
+
+.csign__h3 {
+  margin: var(--s4) 0 var(--s2);
+  color: var(--fg);
+  font-size: var(--fs-note);
+  font-weight: 700;
+}
+
+.csign__p {
+  margin-bottom: var(--s3);
+}
+
+.csign__ul,
+.csign__ol {
+  margin-bottom: var(--s3);
+  padding-left: var(--s5);
+}
+
+.csign__ul {
+  list-style: disc;
+}
+
+.csign__ol {
+  list-style: decimal;
+}
+
+.csign__ul li,
+.csign__ol li {
+  margin-bottom: var(--s1);
+}
+
+.csign__quote {
+  margin: var(--s3) 0;
+  padding: var(--s2) var(--s3);
+  border-left: 2px solid var(--line-2);
+  color: var(--fg-3);
+}
+
+.csign__hr {
+  margin: var(--s5) 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.csign__pre {
+  margin-bottom: var(--s3);
+  padding: var(--s3);
+  overflow-x: auto;
+  border-radius: var(--r1);
+  background: var(--bg-2);
+  color: var(--fg-2);
+  font-family: var(--mono);
+  font-size: var(--fs-tag);
+  line-height: var(--lh-mid);
+}
+
+/* 窄屏下表格横滚 —— 挤成两行比看不全更糟（协议里那张对照表带着实义）。 */
+.csign__tablewrap {
+  margin-bottom: var(--s3);
+  overflow-x: auto;
+}
+
+.csign__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-tag);
+}
+
+.csign__table th,
+.csign__table td {
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.csign__table th {
+  background: var(--bg-2);
+  color: var(--fg);
+  font-weight: 400;
+}
+
+.csign__doc code,
+.csign__foot code {
+  padding: 0 3px;
+  border-radius: var(--r1);
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: 0.94em;
+}
+
+/* ── 签署区 ────────────────────────────────────────────────── */
+
+.csign__agree {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+  color: var(--fg-2);
+  font-size: var(--fs-note);
+  line-height: var(--lh-mid);
+  cursor: pointer;
+}
+
+.csign__agree input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+/* 没勾上时它**就是灰的** —— 不用 JS 另外画一个「不可用」的样子，
+ * 那两处迟早会不一致（一处改了另一处没改，而按钮看起来仍然正常）。 */
+.csign__agree input:disabled {
+  cursor: not-allowed;
+}
+
+.csign__acts {
+  display: flex;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+
+.csign__go {
+  padding: var(--s2) var(--s5);
+  border: 1px solid var(--accent);
+  border-radius: var(--r1);
+  background: var(--accent-weak);
+  color: var(--accent);
+  font-size: var(--fs-note);
+}
+
+.csign__go:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.csign__go:disabled {
+  border-color: var(--line-2);
+  background: transparent;
+  color: var(--fg-3);
+  cursor: not-allowed;
+}
+
+.csign__msg {
+  margin-bottom: var(--s3);
+  color: var(--fg-2);
+  font-size: var(--fs-note);
+}
+
+.csign__foot {
+  color: var(--fg-3);
+  font-size: var(--fs-tag);
+  line-height: var(--lh-loose);
+}

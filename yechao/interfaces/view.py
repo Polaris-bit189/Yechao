@@ -93,11 +93,31 @@ def item_out(
 
 
 def source_out(row: dict[str, Any], *, group_names: dict[int, str]) -> dict[str, Any]:
+    """一条来源消息。
+
+    ## `source` 传**原始 slug**，不在这里翻成中文名
+
+    与 `kind_label` 的做法**不同**，而这是刻意的：
+
+      · 类目名（`kind_label`）是**用户能改**的配置，且改完之后存量条目
+        必须立刻跟着变 —— 那份「当前配置 + 别名表」只有后端有。
+      · 源名是**闭集**（`infrastructure/sources/__init__.py` 的注册表），
+        用户改不了，也不会漂移。它的中文名与图标是**展示映射**，
+        与 `kindIcon` 同一种东西 —— 见本模块 docstring 里「图标不在这一份里」
+        那一段（同一个理由：后端拼一个只有前端看得懂的字段，等于在
+        用户数据里写前端库的命名）。
+
+    ※ 认不出来的 slug **原样传**，由前端决定怎么显示 —— 后端不许在这里
+    丢字段或替换成「未知」：`messages.source` 的默认值是空串（一条没标来源
+    的消息），而**空串是一个合法值**，不是错误。前端据此区分「没标来源」
+    与「标了一个我不认识的来源」。
+    """
     return {
         "msg_id": row["msg_id"],
         "ts": row["ts"],
         "sender": row["sender"] or "",
         "group_name": group_names.get(row["group_id"]) or f"群{row['group_id']}",
+        "source": row["source"] or "",
         "content": row["content"],
     }
 
@@ -112,6 +132,55 @@ def digest_summary_out(d: Any) -> dict[str, Any]:
         "item_count": d.item_count,
         # ※ 可选 —— 旧快照里没有这个字段。前端按 `preview ?? ''` 处理。
         "preview": d.preview,
+    }
+
+
+def run_out(run: Any) -> dict[str, Any]:
+    """一次跑的抬头（`runs` 表的一行）。
+
+    ※ `finished_at` 为 0 时**原样传 0**，不换成 `None`、更不换成「现在」——
+    0 的含义是「还没收尾」（`runs.finished_at` 的默认值）。补成当前时刻会
+    让一次崩在半路的跑看起来像刚刚跑完，而那正是这一页最不该说错的一句话。
+
+    ※ `seen` 与 `produced` 两个数**都要给**：前者是「读到多少条」，
+    后者是「交给库多少条」。只报一个的话，「今天怎么只有这些」与
+    「今天读到的都重复了」就分不开了。
+    """
+    return {
+        "run_id": run.run_id,
+        "kind": run.kind,
+        "status": run.status,
+        "started_at": run.started_at,
+        "finished_at": run.finished_at,
+        "seen": run.seen,
+        "produced": run.produced,
+        "model_eligible": run.model_eligible,
+        "model_sent": run.model_sent,
+    }
+
+
+def unreadable_out(entry: Any, *, run: Any) -> dict[str, Any]:
+    """一条「这个源没读到」的账。
+
+    ## 为什么源名要从 `reason` 里**解出来**
+
+    `application/ingest.py` 记的是 `reason=f"{name}:{type(e).__name__}"`
+    —— 源名没有单独一列。这不是疏忽：`run_entries` 的四个主体列是
+    「消息 / 群 / 批 / 条目」，一个**源名**哪个都不是，硬塞进去会造出一个
+    语义不同的第五种主体（见 `schema.py` 里那四列的注释）。
+
+    ※ 解不出来时 `source` 是空串，而**整条账照样带出去**（`reason` 原样）：
+    丢掉一条看不懂的账，等于把「有个源没读到」这件事也一起丢了 ——
+    而那正是这一页要回答的问题。
+    """
+    reason = entry.reason or ""
+    name, _, why = reason.partition(":")
+    return {
+        "run_id": run.run_id,
+        "run_started_at": run.started_at,
+        "source": name,
+        "reason": reason,
+        "why": why,
     }
 
 

@@ -157,10 +157,13 @@
   position: relative;
 }
 
-/* 菜单向上弹 —— 下面没有空间了。 */
+/* ※ 菜单**向下**弹。原来写的是向上（`bottom: calc(100% + 5px)`），理由是
+   「下面没有空间了」—— 但那是在「撤销 / 主题」还被 `margin-top: auto` 推到
+   侧栏最底的时候。后来那一行去掉了（侧栏中间空出一大片，见 `.rail__tail`），
+   「主题」现在落在侧栏中段，**下面全是空间**，再往上弹反而盖住导航项。 */
 .themebox {
   position: absolute;
-  bottom: calc(100% + 5px);
+  top: calc(100% + 5px);
   left: 0;
   width: 100%;
   padding: 4px;

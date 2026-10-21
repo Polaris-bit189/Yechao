@@ -333,7 +333,11 @@ describe('token 齐不齐', () => {
     // 由 JS 内联设置的变量：它们的「定义」在 tsx 的 style 里，不在 CSS 里。
     // Sky.tsx 给每个粒子槽发位置与周期，KindsPage.tsx 给每行发类目色。
     // 名字一律**不带前导 --**，跟 tokenNames() 保持一致。
-    const INLINE_ONLY = new Set(['w', 'h', 'cycle', 'lag', 'sway', 'dur', 'kc'])
+    // ※ `track` 是古登堡那套主题的流星路径（`offset-path: var(--track)`，
+    // 见 theme.css 的 `.sky__meteor`）—— 五条弧共用一套规则、各自一条路径，
+    // 所以路径只能由 Sky.tsx 按弧内联发下来。它原来没登记在这里，
+    // 于是这条判据一直红着：**代码是对的，是这张名单漏了**。
+    const INLINE_ONLY = new Set(['w', 'h', 'cycle', 'lag', 'sway', 'dur', 'kc', 'track'])
 
     const RE_VAR = new RegExp('var' + '\\(\\s*--([\\w-]+)', 'g')
 

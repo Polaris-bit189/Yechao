@@ -1,0 +1,112 @@
+/* 数据源状态：一行状态条 + 展开面板。
+ *
+ * ※ 这一份**自带全部类名**，不借 SetupPage.css 里的 `.rows*` / `.hint`。
+ * 借用能用，只是因为打包之后所有 CSS 落在同一张表上 —— 而那种依赖
+ * 在删掉配置页那天会静默失效（状态条突然没样式了，且不报错）。
+ * 两个页面的行距刻度本来也不一样，共用一组类名只会让改一处动两处。 */
+
+/* ── 一行状态条（信息流页顶上）──────────────────────────────── */
+
+.stat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s2);
+  margin-bottom: var(--s4);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--fg-2);
+  font-size: var(--fs-tag);
+  line-height: var(--lh-tight);
+}
+
+.stat__dim {
+  color: var(--fg-3);
+}
+
+/* 「有源没读到」用告警色。它**不闪、不弹**：这是一页每天看的东西，
+ * 一个常驻的红色块会让人很快学会无视它 —— 那时它就没用了。 */
+.stat__bad {
+  color: var(--danger);
+}
+
+/* ── 展开面板（配置页「数据源」页签）────────────────────────── */
+
+.sthint {
+  margin-bottom: var(--s3);
+  color: var(--fg-3);
+  font-size: var(--fs-note);
+  line-height: var(--lh-loose);
+}
+
+.stgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+}
+
+.stcard {
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  background: var(--surface);
+}
+
+.stcard__n {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stcard__k {
+  margin-top: 2px;
+  color: var(--fg-3);
+  font-size: var(--fs-tag);
+  letter-spacing: var(--track-label);
+}
+
+.strows {
+  margin-bottom: var(--s5);
+}
+
+.strows__line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-note);
+}
+
+.strows__name {
+  min-width: 88px;
+  color: var(--fg);
+}
+
+.strows__dim {
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 失败状态。与 `.stat__bad` 同一档颜色，理由相同。 */
+.stbad {
+  color: var(--danger);
+}
+
+@media (max-width: 767px) {
+  /* 三张卡在窄屏挤成一行会让数字换行 —— 两列更好读。 */
+  .stgrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .strows__line {
+    flex-wrap: wrap;
+    gap: var(--s1) var(--s2);
+  }
+
+  .strows__name {
+    min-width: 0;
+  }
+}

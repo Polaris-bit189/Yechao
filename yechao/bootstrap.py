@@ -326,6 +326,22 @@ class App:
             clock=self.clock,
         )
 
+    def known_sources(self) -> tuple[str, ...]:
+        """**已注册**的源名（不是「已配置」的，也不是「读到了」的）。
+
+        ※ 由组合根露出来，理由与 `ingest_deps` 逐字相同：入口层不许
+        import 适配层，所以「一共有哪些源」只有这里能答。
+
+        ※ 三种「有哪些源」必须分开说，否则界面上会合成一句错话：
+          · **已注册**（本方法）—— 代码里支持哪些
+          · **库里出现过**（`counts_by_source`）—— 实际读进来过哪些
+          · **这一轮读到了**（`runs` 的账）—— 最近一次跑了哪些
+        合起来用一个数，症状是「注册了七个源」被读成「读到了七个源」。
+        """
+        from yechao.infrastructure.sources import known_names
+
+        return known_names()
+
     # ── 第三方账号授权协议 ──────────────────────────────────────
     #
     # ※ 为什么由组合根露出来、而不是让 CLI 直接 import `sources.consent`：
@@ -352,6 +368,41 @@ class App:
         from yechao.infrastructure.sources import consent
 
         return consent.record_acceptance(note=note)
+
+    def consent_detail(self) -> dict[str, Any]:
+        """协议的状态**与正文**。
+
+        ※ 与 `consent_info()` 的分工：那一个给命令行用，报的是
+        「正文在哪、什么版本、签没签」三样，够人照着去找文件。这一个给
+        **网页**用 —— 网页读不到文件系统，所以正文得**带过去**。
+
+        ※ 正文读不到时 `doc_md` 是 `None`、`doc_error` 里是原因，
+        **不抛**：签没签、什么版本这些照样答得出来（见 `protocol_doc_text`）。
+
+        ※ `accepted_at` 只在它是**整数秒**时给值。`consent.toml` 是人手
+        也可能改的文件，`accepted_at = "昨天"` 会走到这里 —— 那种记录
+        由 `check_consent()` 拦下并报错（它才是闸门），这里只如实回报
+        「这个值不是一个时刻」，不替它编一个。
+        """
+        from yechao.infrastructure.sources import consent
+
+        table = consent.load_consent()
+        raw_at = table.get("accepted_at")
+        # `bool` 是 `int` 的子类 —— 不排掉的话 `accepted_at = true` 会被
+        # 当成 1970-01-01T00:00:01，而那个时间戳看起来完全正常。
+        at = raw_at if isinstance(raw_at, int) and not isinstance(raw_at, bool) else None
+        raw_ver = table.get("version")
+        text, why = consent.protocol_doc_text()
+        return {
+            "protocol_id": consent.PROTOCOL_ID,
+            "version": consent.PROTOCOL_VERSION,
+            "accepted_version": None if raw_ver is None else str(raw_ver),
+            "accepted_at": at,
+            "note": str(table.get("note") or ""),
+            "doc_path": str(consent.protocol_doc_path()),
+            "doc_md": text,
+            "doc_error": why,
+        }
 
     def cloud_deps(self) -> Any:
         from yechao.application import cloud_refine

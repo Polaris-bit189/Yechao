@@ -1056,6 +1056,134 @@ def create_app(app_obj: Any) -> FastAPI:
             "hint": v.hint,
         }
 
+    # ══ 第三方账号授权协议 ═════════════════════════════════════
+    #
+    # ※ 这一对是「读协议 → 签署」那条路的两个半边。
+    #
+    # 在此之前，接受协议**只有命令行一条路**（`python -m yechao consent accept`）。
+    # 于是网页上想启用 IMAP 信箱、带登录态的订阅、浏览器登录态时，用户会
+    # 撞上「需要签署协议」，而页面上**没有那个按钮** —— 一条指不到下一步的
+    # 提示，比没有提示更坏。
+    #
+    # ※ 协议正文由后端**带过去**：网页读不到文件系统，而让用户自己去开
+    # 一个路径，等于把「读一遍协议」这件事从流程里拿掉了。
+
+    @api.get("/api/consent")
+    def get_consent() -> dict[str, Any]:
+        """协议的状态**与正文**。只读。"""
+        return app_obj.consent_detail()
+
+    @api.post("/api/consent")
+    def accept_consent(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        """记一条接受记录。
+
+        ## ※ 为什么要求调用方**回显版本号**
+
+        接受协议这件事的全部意义是「用户同意的是**他读过的**那一版」。
+        一个只认「点了同意」的端点会在这一种情形下撒谎：
+
+        > 用户打开页面（上面写着 1.0）→ 期间协议被改成 1.1 →
+        > 他点了「我已阅读并同意」。
+
+        他同意的是 1.0，而记录里会写着 1.1 —— 而那条记录**看起来完全
+        正常**（版本号合法、时间戳合理）。
+
+        ⇒ 前端把它**显示出来的那一版**原样回传，这里比对。对不上就是
+        **400**，而不是「按当前版本记一条」：那正是「他同意过的是旧条款」
+        这条判据要拦的东西。
+
+        ※ 已经签过**当前版本**时不重复记录，回 `recorded: false` ——
+        与命令行 `consent accept` 同一个行为。重写会把 `accepted_at`
+        推到今天，于是「他什么时候同意的」这个事实就没了。
+        """
+        # ※ 协议这件事的**全部**知识都在 `app_obj` 后面（组合根）——
+        # 这里不 import `yechao.infrastructure.sources.consent`：
+        # 入口层不许直接碰适配层（`test_入口层不直接摸适配层` 钉着这条）。
+        detail = app_obj.consent_detail()
+        current = str(detail["version"])
+
+        shown = str(payload.get("version") or "").strip()
+        if not shown:
+            raise ValidationError(
+                "请求里缺 version —— 要回传你在页面上**读到的那一版**"
+                "（同意的是读过的那一版，不是服务端此刻那一版）",
+                field="version",
+            )
+        if shown != current:
+            raise ValidationError(
+                f"你读到的是协议 {shown}，而当前是 {current} —— "
+                f"协议在你阅读期间改版了。刷新页面，把新的一版重读一遍再同意。",
+                field="version",
+            )
+
+        if detail["accepted_version"] == current:
+            return {**detail, "recorded": False}
+
+        app_obj.accept_consent(note=str(payload.get("note") or ""))
+        return {**app_obj.consent_detail(), "recorded": True}
+
+    # ══ 数据源状态 ═════════════════════════════════════════════
+    #
+    # ※ 这一条**只读**（`app_obj.reader`），与其余 GET 同一条纪律。
+    # ※ 它也**不缓存**：状态页要的是「现在是什么样」，而它被打开得最勤的
+    # 时刻恰恰是「刚跑完一轮、想确认一下」—— 那一刻一个 10 秒前的答案
+    # 正好是错的。缓存省下的那点开销换不来这个。
+
+    @api.get("/api/status")
+    def status(runs: int = 10) -> dict[str, Any]:
+        """数据源状态：最近几轮跑成什么样、哪几个源没读到、库里有几个源。
+
+        ## ※ 三个「有哪些源」是**三件事**，这里分开给
+
+        | 字段 | 答的是 |
+        |---|---|
+        | `known_sources` | 代码里**注册**了哪些源（闭集，不随数据变） |
+        | `by_source` | 库里**出现过**哪些源、各多少条 |
+        | `unreadable` | 最近几轮里**没读到**的源 |
+
+        合成一个数的话，「注册了七个源」会被读成「读到了七个源」——
+        而演示时那正是最想说的一句话，也正是不该说错的一句话。
+
+        ## ※ `by_source` 的口径是「**库里现在**」，不是「上一轮读了多少」
+
+        「上一轮各读了多少条」**没有落库**：摄取那一路的账只记失败
+        （见 `application/ingest.py` 的「账记的是失败，不是安静」），
+        每轮各源条数只活在 watcher 的日志里。所以这一页显示的是
+        **累计**按来源的分布 —— 界面上必须照这个口径写，写成「这一轮
+        读了 N 条」就是一句编出来的话。
+
+        ## 为什么 `runs` 要有上限
+
+        `entries_of_run` 是**每一轮一次查询**，而这里对每一轮摄取都要查一次
+        —— 不设上限的话，一个跑了几千轮的库会把这一页拖成 N+1 的教科书例子。
+        """
+        from yechao.application.ingest import SOURCE_UNREADABLE
+        from yechao.domain.errors import RUN_INGEST
+
+        limit = max(1, min(int(runs), 50))
+        recent = app_obj.reader.recent_runs(limit=limit)
+
+        # 「哪几个失败」只捞**摄取**那一类：只有它记 `source_unreadable`。
+        # 别的 kind 的账（filtered / spam / quote_mismatch）答的是「这条
+        # 消息为什么没进条目」，那是条目详情页那一侧的问题 ——
+        # 混进这里会让「数据源状态」变成一份什么都有的大杂烩。
+        bad: list[dict[str, Any]] = []
+        for r in recent:
+            if r.kind != RUN_INGEST:
+                continue
+            for e in app_obj.reader.entries_of_run(r.run_id):
+                if e.kind == SOURCE_UNREADABLE:
+                    bad.append(view.unreadable_out(e, run=r))
+
+        return {
+            "generated_at": app_obj.clock.now(),
+            "runs": [view.run_out(r) for r in recent],
+            "unreadable": bad,
+            "by_source": app_obj.reader.counts_by_source(),
+            "messages": app_obj.reader.message_count(),
+            "known_sources": list(app_obj.known_sources()),
+        }
+
     # ══ 健康 ═══════════════════════════════════════════════════
 
     @api.get("/api/health")

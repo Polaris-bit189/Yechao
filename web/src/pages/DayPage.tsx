@@ -12,6 +12,7 @@ import { parse, type Block } from '../lib/md'
 import { ago, mdhmText, weekdayOf } from '../lib/time'
 import { kindColor } from '../lib/theme'
 import { IcChevron, IcPin } from '../ui/icons'
+import { SourceTag } from '../ui/SourceTag'
 import './DayPage.css'
 
 /**
@@ -251,6 +252,10 @@ function Cited({ item }: { item: Item }) {
           {srcs?.map((s) => (
             <blockquote key={s.msg_id} className="cited__src">
               <div className="cited__src-head">
+                {/* 来源放在最前面：这一条**从哪儿读来的**是这一行的主语，
+                    群名与发送者是它的补充。库里同时有七个源的消息，
+                    不标出来就分不出「这条是群里说的」还是「邮件里说的」。 */}
+                <SourceTag source={s.source} />
                 <span>{s.group_name}</span>
                 <span>·</span>
                 <span>{s.sender}</span>

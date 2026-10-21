@@ -102,6 +102,33 @@ def consent_path() -> Path:
     return config_dir() / CONSENT_FILE
 
 
+def protocol_doc_text() -> tuple[str | None, str]:
+    """协议正文，以及**读不到时的原因**（读到了就是空串）。
+
+    ## 为什么不抛
+
+    调用方是网页那一侧，它要**同时**报出两件事：
+
+      · 当前版本是多少、这台机器签没签（这些与正文在不在无关）
+      · 正文读得到还是读不到
+
+    抛出去的话，用户看到的会是一个什么都问不出来的页面 —— 而真相只是
+    那一个文件不在。协议**正文**读不到是要响的（不能让人对着一个空框点
+    「我已阅读」），但响的方式是把原因摆在正文该在的地方，不是把整页
+    变成一句报错。
+
+    ※ 读不到最可能的场景是**装出来的包**：`protocol_doc_path()` 按
+    `repo_root()` 算（见 `_common.py`），而 `pip install` 之后的仓库根
+    是 site-packages，`docs/` 不一定跟着走。那时原因里带着绝对路径，
+    用户照着找得到。
+    """
+    path = protocol_doc_path()
+    try:
+        return path.read_text(encoding="utf-8"), ""
+    except OSError as e:
+        return None, f"读不到协议正文 {path}：{e}"
+
+
 def load_consent() -> dict[str, Any]:
     """读 `[third_party_account]` 这张表。**没有这张表**返回 `{}`。
 

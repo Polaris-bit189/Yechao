@@ -589,66 +589,108 @@
   mask-image: linear-gradient(0deg, #000 0 52%, transparent 100%);
 }
 
-/* ── 角落的朱印与符箓 ────────────────────────────────────────
+/* ── 每套一件小物件 ──────────────────────────────────────────
  *
- * 位置挑在**内容区右侧的留白**里 —— 卡片盖不到那儿。上一版把远山画在
- * 背景层，有内容的页面上被卡片压掉大半，等于没画；这一处不重蹈覆辙。
+ * 位置在**内容区右侧的留白**里 —— 卡片盖不到那儿，所以它真的看得见。
+ * 上一版把远山画在背景层，有内容的页面上被卡片压掉大半，等于没画。
  *
- * 颜色是**朱砂**：不从 `--accent` 取（各主题不同色），而是从红那一族混出来。
- * 印章就该是红的 —— 那是物件的属性，不是主题的气质。 */
-.sky__corner {
+ * 每套各画各的（星图 / 灯笼 / 樱枝 / 水波），这是这套界面的老规矩：
+ * 主题换的是气质，不是色号。第一版在这里摆过五套通用的朱印加符箓，
+ * 那等于把五套拉平成一样，已经拿掉。
+ *
+ * ※ 存在感压得很低（0.3 上下）。它是**角落里的一件东西**，不是插画 ——
+ *   抬头能看见，盯着它看不会烦。规格 §一 那句「花哨的视觉层次在扣分」
+ *   管的就是这一处。 */
+.sky__obj {
   position: absolute;
-  right: 3.5%;
-  bottom: 15%;
-  display: flex;
-  align-items: flex-end;
-  gap: 13px;
-  color: color-mix(in srgb, var(--danger) 72%, var(--bg));
-  opacity: 0.34;
-}
-
-.sky__talisman {
+  /* ※ 2% ≈ 29px。右侧留白只有 ~160px 宽（1440 − 224 侧栏 − 48 内边距
+     − 896 内容区），所以这一列东西**必须**贴右边放、宽度也得压在 150px 内 ——
+     第一版给到 240px，整个伸进卡片底下，等于没画。 */
+  right: 2%;
+  bottom: 16%;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.2;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: color-mix(in srgb, var(--fg-2) 62%, var(--bg));
+  opacity: 0.3;
 }
 
-.sky__talisman--a {
-  width: 26px;
-  height: 92px;
-  transform: rotate(-4deg);
+/* 星点与花朵是实心的 —— 描边画不出「点」。 */
+.sky__obj--stars circle,
+.sky__obj--branch circle {
+  fill: currentColor;
+  stroke: none;
 }
 
-.sky__talisman--b {
-  width: 26px;
-  height: 92px;
-  transform: rotate(3deg) translateY(7px);
+.sky__obj--stars {
+  width: 120px;
+  height: 74px;
 }
 
-.sky__seal {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border: 2.5px solid currentColor;
-  border-radius: 3px;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
+.sky__obj--lantern {
+  width: 64px;
+  height: 104px;
+}
+
+.sky__obj--branch {
+  width: 128px;
+  height: 93px;
+}
+
+.sky__obj--ripples {
+  width: 132px;
+  height: 66px;
+}
+
+/* 古登堡的结晶星屑：一片菱形小片，各自错开明灭。
+ * ※ 只动 opacity（规格 §六 的纪律），而且周期以秒计 —— 它们是粒子，
+ *   不是背景光，按规矩可以快一点。 */
+.sky__obj--stardust {
+  /* 铺满整屏，不再挤在右侧留白那一小块里；顶边再往下压一截 ——
+     星屑聚在画面的下半部分更自然（上半留给月亮和流星）。 */
+  inset: 12% 0 0 0;
+  width: 100%;
+  height: 100%;
+  /* ※ 铺开之后数量多了，单点要比原来淡 —— 否则整片屏幕都在闪。
+     这一层的不透明度会和 keyframes 的暗帧相乘，所以给 0.75。 */
+  opacity: 0.75;
+}
+
+.sky__obj--stardust path {
+  fill: currentColor;
+  stroke: none;
+  animation: crystalTwinkle 9s ease-in-out infinite;
+}
+
+/* ※ 暗帧**不全灭**（0.22 而不是 0）。全灭的话一半时间里这片星屑是空的 ——
+   静态截图会拍空，真人看也是「刚才好像有什么、现在没了」。粒子该有呼吸，
+   但不该消失。 */
+@keyframes crystalTwinkle {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  45%,
+  55% {
+    opacity: 1;
+  }
 }
 
 /* 窄屏没有右侧留白，收了。 */
 @media (max-width: 1279px) {
-  .sky__corner {
+  .sky__obj {
     display: none;
   }
 }
 
-/* 古登堡是**特别的一类**，这一处先不挂 —— 它自己那套（走纸格线 + 活字）
-   已经够满，再塞朱印会打架。 */
-[data-theme='katsuji'] .sky__corner {
-  display: none;
-}
+/* ※ 这里原来有一条 `[data-theme='katsuji'] .sky__obj { display: none }`，
+   本意是「古登堡先不动」。但 katsuji 分支**只渲染星屑这一个物件**，
+   那条规则等于把它自己也收掉了 —— 症状是元素在 DOM 里、有 10 个 path、
+   就是 `display: none`，截图上一片空白。删掉。
+   （古登堡不加星图/灯笼/樱枝/水波，是在 `Corner` 的 switch 里保证的，
+     不靠 CSS 兜。） */
 
 /* ── 宣纸颗粒 + 暗角 ─────────────────────────────────────────
  *
@@ -674,7 +716,9 @@
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 160px 160px;
-  opacity: 0.07;
+  /* ※ 0.07 → 0.1。颗粒是「纸」和「塑料」之间唯一的区别：
+     纯渐变太干净，干净就假。上一版压得太低，等于没加。 */
+  opacity: 0.1;
 }
 
 /* 宵：右上斜光束，极慢地扫；四角星向光源聚集、明灭。 */
@@ -892,11 +936,28 @@
   }
 }
 
-/* 古登堡：排字格线走纸 + 月球 + 朱砂油墨；活字上浮。 */
+/* 古登堡：排字格线走纸 + 卫星 + 星屑 + 朱砂油墨；活字上浮。
+ *
+ * ※ 这一套的意象是「卫星上的露天咖啡厅」—— 一颗悬在失重里的月，底下是
+ *   活字排成的世界。所以月亮不能是可有可无的一点光（原来 0.05 的不透明度
+ *   在屏幕上根本看不见），它得是**这一套的地标**：月盘、外晕、冷光三层叠。 */
 [data-theme='katsuji'] .sky {
+  /* ※ 月盘与外晕的 α 是**被对比度预算卡住的**，不是随手定的：
+     月盘落在 21%/12%，而 `a { color: var(--accent) }` 要求链接色在壁纸
+     最亮像素上仍 ≥ 4.5:1（`theme.test.ts` 的「链接色 --accent 当正文用」）。
+     `--accent` 是朱砂 #cc6d48，压在月盘上时：
+       月盘 0.17 → 3.44 ✗   0.07 → 4.58 ✓
+       外晕 0.09 → 4.48 ✗   0.08 → 4.58 ✓   ← 它也要压：只压月盘的话
+                                              它就成了新的最亮点
+     两个都要过，所以两条一起降。（改这两个数之前先跑一遍那条测试。）
+     ※ 这与上一版 0.05 的月盘相比仍是**更亮**的 —— 是收，不是回退。 */
   background:
-    radial-gradient(circle 36px at 21% 12%, rgba(232, 222, 192, 0.05), transparent 72%),
-    radial-gradient(900px 500px at 21% 8%, rgba(200, 160, 110, 0.05), transparent 66%),
+    /* 月盘本体 */
+    radial-gradient(circle 44px at 21% 12%, rgba(238, 230, 205, 0.07), transparent 70%),
+    /* 外晕 —— 没有硬环，光是一层层散出去的 */
+    radial-gradient(circle 132px at 21% 12%, rgba(222, 202, 162, 0.08), transparent 72%),
+    radial-gradient(900px 520px at 21% 8%, rgba(200, 160, 110, 0.07), transparent 66%),
+    /* 底部那团朱砂油墨 */
     radial-gradient(820px 500px at 72% 108%, rgba(190, 60, 40, 0.06), transparent 70%);
 }
 
@@ -952,7 +1013,225 @@
 @media (prefers-reduced-motion: reduce) {
   .sky,
   .sky::before,
-  .sky__dot {
+  .sky__dot,
+  /* ※ 流星与十字星原来**不在这张名单上** —— 也就是说要求减少动效的人
+     照样会被流星划过。它们的基础 `opacity` 是 0，动画一关就彻底不出现，
+     正是这里该有的行为（而不是「停住不动」：一颗钉在半空的流星更怪）。 */
+  .sky__meteor,
+  .sky__spark {
     animation: none !important;
+  }
+}
+
+/* ── 流星群（古登堡专用） ─────────────────────────────────────
+ *
+ * 形状：**圆球 + 锥形** —— 一条前粗后细的锥，头上叠一颗实心圆核。
+ * 上一版是 1.6px 的细线，在 64% 不透明的卡片底下等于没画。
+ *
+ * 路径走 `--track` 变量：五条弧共用这一套规则，各自一条路径。
+ * `offset-rotate: auto` 让锥体自己跟着切线转，始终头朝前。 */
+/* 流星那一层画在一块 **1440×1000 的参考画布**上，整块钉在右上角。
+ *
+ * ※ 为什么必须是一块固定尺寸的画布
+ *
+ * 路径 `offset-path: path('M 620 860 Q 980 500 1220 180')` 的坐标是
+ * **绝对 px**，而十字星的 `left/top` 是**百分比**。两者只有在「画布的
+ * 宽高正好是那两个百分比的分母」时才相等 —— 原来是 `.sky` 本身，
+ * 也就是**视口**，于是只在视口正好 1440×1000 时对得上（那正是截图的
+ * 尺寸，所以出图时看着是对的）。实测 1920 宽时十字星闪在流星熄灭处
+ * **右边 400 多 px**，1200 宽时在左边 200 多 px。
+ *
+ * 把两者放进同一块画布，这个等式就与视口无关了 —— 不是把数字调对，
+ * 是**去掉了「两套坐标」这件事**。
+ *
+ * ※ 钉右上角而不是左上角：流星是**右上角**的现象。视口变宽时它应当
+ * 跟着右边缘走，而不是留在离左边 1220px 的地方。
+ *
+ * ※ 画布比视口高或宽时溢出到外面，这是**要的**：五条弧的可见段都在
+ * 画布左上到右上的对角线上，钉住右上角之后，任何视口尺寸下那一段都
+ * 落在屏幕里。 */
+.sky__meteors {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1440px;
+  height: 1000px;
+  pointer-events: none;
+}
+
+.sky__meteor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 190px;
+  height: 12px;
+  /* 梭形：两端收尖、中间最宽 —— 三角形是「方」的根源，它右端是一条
+     竖直的平边，看着像一块楔子。 */
+  /* ※ 锥形裁在 ::before 上、圆头用 ::after 叠 —— 直接给元素加 clip-path
+     会把圆头一起裁成多边形，头就不圆了。 */
+  background: none;
+  overflow: visible;
+  filter: blur(0.3px);
+  offset-path: var(--track);
+  offset-rotate: auto;
+  /* ※ 锚点钉在**头**（96% 处）。默认锚点是左上角，而头在右端，
+     于是 `offset-distance: 100%` 落下的是**尾巴**的位置，
+     十字星却按头部算 —— 两者差了一整个身长。 */
+  offset-anchor: 96% 50%;
+  /* 缩放原点钉在**头**那一端：收短时是尾巴往回缩，不是两头一起缩。 */
+  transform-origin: 100% 50%;
+  opacity: 0;
+  /* 曲线加速：流星是越落越快的，不是匀速飘。 */
+  animation: meteor 9s cubic-bezier(0.45, 0.02, 0.78, 0.36) infinite;
+}
+
+/* 锥身：从头往尾收细。
+ *
+ * ※ 这里**没有**「头部再点一个亮核」那一层了。原来它在 96% 处画一个
+ *   **写死 6px** 的 radial —— 五条流星的本体从 95×6 到 250×16，那个 6px
+ *   在小流星上比整条身子还粗，会从圆头左边鼓出来一块。而圆头本来就
+ *   盖在 96% 上，它一直是多余的。 */
+.sky__meteor::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0% 50%, 100% 4%, 100% 96%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(240, 233, 210, 0.06) 38%,
+    rgba(244, 238, 218, 0.34) 70%,
+    rgba(252, 248, 236, 0.92) 96%
+  );
+}
+
+/* 头：一颗**圆球**。用户点名要圆的 —— 梭形/三角形的头都是尖的，
+   那是一支箭，不是流星。
+ *
+ * ※ 尺寸按**本体高度**给（`110%`），不是写死的 14px。五条流星的本体从
+ *   6px 到 16px 厚，一个固定直径的圆头在小流星上比身子还粗 —— 看着像
+ *   棒棒糖而不是流星。`aspect-ratio` 让它跟着高度等比走。
+ *   （锥体尖端在 100% 处是 4%~96%，即 92% 的高度；110% 让圆头比尖端
+ *   略鼓出一点，读起来才是「一颗核」而不是「一个平头」。） */
+.sky__meteor::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  height: 110%;
+  aspect-ratio: 1;
+  transform: translate(50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 250, 1) 0 38%,
+    rgba(255, 248, 226, 0.72) 66%,
+    transparent 100%
+  );
+}
+
+@keyframes meteor {
+  0%,
+  72% {
+    opacity: 0;
+    offset-distance: 0%;
+    transform: scaleX(1);
+  }
+  74% {
+    opacity: 1;
+  }
+  86% {
+    opacity: 1;
+    offset-distance: 100%;
+    transform: scaleX(1);
+  }
+  87.5% {
+    opacity: 1;
+    transform: scaleX(0.5);
+  }
+  89% {
+    opacity: 1;
+    transform: scaleX(0.12);
+  }
+  90%,
+  100% {
+    opacity: 0;
+    offset-distance: 100%;
+    transform: scaleX(0);
+  }
+}
+
+/* ── 熄灭后的十字星 ──────────────────────────────────────────
+ * 上一版 26px、亮度不够，屏幕上一晃就过去了。现在放到 44px、
+ * 闪动的明暗差拉满（0.02 ↔ 1），让它**真的闪**。
+ *
+ * ※ 形状上做过一次修正：上一版**显胖** —— 亮核的半径（21px 的 18% 再
+ *   渐变到 52%）跟整个星差不多大，四条臂只从核边上探出一点点，
+ *   看上去是「一个球背后画了个十字」。两处都收窄了：
+ *   · 核收到 6% 实心 + 22% 收边（小核、亮）；
+ *   · 腰从 57%/43% 收到 53.5%/46.5% —— 臂根只有 3.1px 宽，
+ *     臂从核里长出去，读起来才是**星芒**。
+ */
+.sky__spark {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  opacity: 0;
+  /* 四角尖星：四个尖角收在中心，臂越往外越细 —— 用 `linear-gradient` 画
+     出来的是**方头**的十字，那是「方正」的来源。 */
+  /* ※ 背景要**铺满**整个元素，再由 clip-path 裁出星形。只画中心一个
+     radial 圆的话，星形的四条臂是透明的 —— 裁出来只剩中间一点，
+     看着像颗灰点而不是十字。 */
+  background: radial-gradient(
+    circle 22px at 50% 50%,
+    rgba(255, 255, 250, 1) 0 6%,
+    rgba(255, 250, 232, 0.85) 22%,
+    rgba(255, 246, 222, 0.25) 55%,
+    transparent 100%
+  );
+  clip-path: polygon(
+    50% 0%,
+    53.5% 46.5%,
+    100% 50%,
+    53.5% 53.5%,
+    50% 100%,
+    46.5% 53.5%,
+    0% 50%,
+    46.5% 46.5%
+  );
+  filter: blur(0.15px);
+  animation: spark 9s linear infinite;
+}
+
+@keyframes spark {
+  0%,
+  89% {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  91% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  92.5% {
+    opacity: 0.02;
+    transform: scale(0.7);
+  }
+  94% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+  95.5% {
+    opacity: 0.04;
+  }
+  97% {
+    opacity: 0.85;
+    transform: scale(1.1);
+  }
+  99%,
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
   }
 }

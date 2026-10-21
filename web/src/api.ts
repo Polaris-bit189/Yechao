@@ -31,6 +31,13 @@ export interface Source {
   ts: number
   sender: string
   group_name: string
+  /**
+   * 这条消息从哪个源读来的（`messages.source` 的 slug）。
+   *
+   * ※ 空串是**合法值**，含义是「这条消息没标来源」—— 与「我不认识这个源」
+   * 不是一回事。显示映射见 `lib/source.ts`。
+   */
+  source: string
   content: string
 }
 
@@ -144,6 +151,70 @@ export interface JobRow {
   actor: string
   started_at: number
   finished_at: number | null
+}
+
+export interface RunRow {
+  run_id: string
+  /** `ingest` / `refine` / `digest` —— 见后端 `domain/errors.py` 的闭集。 */
+  kind: string
+  /** `ok` / `failed`。 */
+  status: string
+  started_at: number
+  /** 0 = **还没收尾**。不是「1970 年」，也不要补成当前时刻。 */
+  finished_at: number
+  /** 读到多少条。 */
+  seen: number
+  /** 交给库多少条。与 `seen` 不是一回事。 */
+  produced: number
+  model_eligible: number
+  model_sent: number
+}
+
+export interface UnreadableRow {
+  run_id: string
+  run_started_at: number
+  /** 源名。解不出来时是空串 —— 见后端 `view.unreadable_out`。 */
+  source: string
+  /** 原始原因码，形如 `qq:SourceError`。 */
+  reason: string
+  /** `reason` 里冒号后面那一段（异常类型名）。 */
+  why: string
+}
+
+export interface SourceCount {
+  source: string
+  messages: number
+  /** 这个源最新一条消息的时间。0 = 没有。 */
+  last_ts: number
+}
+
+export interface StatusResponse {
+  generated_at: number
+  runs: RunRow[]
+  unreadable: UnreadableRow[]
+  /** **库里现在**按来源的分布，不是「上一轮各读了多少」。 */
+  by_source: SourceCount[]
+  messages: number
+  /** 代码里**注册**了哪些源。与「读到了哪些」是两件事。 */
+  known_sources: string[]
+}
+
+export interface ConsentState {
+  protocol_id: string
+  /** 当前协议版本。 */
+  version: string
+  /** 这台机器上签过的那一版。没签过是 null（不是空串）。 */
+  accepted_version: string | null
+  accepted_at: number | null
+  note: string
+  /** 协议正文在磁盘上的位置。读不到正文时靠它指路。 */
+  doc_path: string
+  /** 协议正文（Markdown）。读不到时是 null —— 见 `doc_error`。 */
+  doc_md: string | null
+  /** 正文读不到的原因。读到了就是空串。 */
+  doc_error: string
+  /** 只有 POST 的响应里有：这一次是不是**真的**记了一条。 */
+  recorded?: boolean
 }
 
 export interface PrivacyDirty {
@@ -371,3 +442,17 @@ export const putPack = (toml: string, apply: boolean, keepSettings: boolean) =>
   })
 
 export const getPrivacy = () => get<PrivacyResponse>('/api/privacy')
+
+export const getStatus = () => get<StatusResponse>('/api/status')
+
+export const getConsent = () => get<ConsentState>('/api/consent')
+
+/**
+ * 签署。
+ *
+ * ※ `version` 是**你在页面上读到的那一版**，不是「当前版本」——
+ * 服务端会比对，对不上就回 400（协议在你阅读期间改版了）。
+ * 传「当前版本」等于让这个校验形同虚设，而那正是它要拦的事。
+ */
+export const acceptConsent = (version: string, note = '') =>
+  send<ConsentState>('/api/consent', 'POST', { version, note })

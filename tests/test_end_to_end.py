@@ -266,7 +266,7 @@ class _StubModel:
         #: 每次抽取调用里抓到的 slug 元组。
         self.slugs_seen: list[tuple[str, ...]] = []
 
-    def complete(self, *, system: str, user: str, max_tokens: int) -> str:
+    def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         if _DIGEST_MARK in system:
             self.digest_systems.append(system)
             self.digest_users.append(user)
@@ -963,6 +963,39 @@ def test_接口能读到东西(链路) -> None:
 
     st, privacy = 链路.client.get("/api/privacy")
     assert st == 200 and privacy["records"] > 0, f"隐私页看不到出网记录：{privacy}"
+
+    # ※ 条目详情要带得出**来源 slug**。少了它的症状是「多源这件事在界面上
+    # 隐形」—— 库里同时躺着几个源的消息，而卡片上分不出哪条来自哪个。
+    iid = body["items"][0]["item_id"]
+    st, detail = 链路.client.get(f"/api/items/{iid}")
+    assert st == 200, f"/api/items/{{id}} 回了 {st}"
+    assert detail["sources"], "条目详情里没有来源消息"
+    assert all("source" in s for s in detail["sources"]), (
+        "来源消息里没有 `source` 字段 —— 界面分不出这条来自 QQ 群、邮件、"
+        "会议还是网页"
+    )
+
+    st, status = 链路.client.get("/api/status")
+    assert st == 200, f"/api/status 回了 {st}"
+    assert status["runs"], "状态页看不到任何一轮跑过的记录"
+    assert status["messages"] > 0, "状态页说库里一条消息都没有"
+    assert status["by_source"], "状态页看不到按来源的分布"
+    assert status["known_sources"], "状态页看不到已注册的源"
+    # 「库里出现过的源」必须是「注册表里有的源」的子集。空串是
+    # 「这条消息没标来源」，不是源名 —— 单独排掉，见 `messages.source` 的注释。
+    live = {s["source"] for s in status["by_source"]} - {""}
+    unknown = live - set(status["known_sources"])
+    assert not unknown, f"库里出现了注册表里没有的源：{sorted(unknown)}"
+
+    st, consent = 链路.client.get("/api/consent")
+    assert st == 200, f"/api/consent 回了 {st}"
+    assert consent["version"], "协议没有版本号 —— 接受记录无从核对"
+    # ※ 正文**读不到不算失败**（装出来的包可能没带 `docs/`），但要把原因
+    # 给出来。「读不到正文却什么也不说」才是失败 —— 用户会对着一个空框
+    # 点「我已阅读并同意」。
+    assert consent["doc_md"] or consent["doc_error"], (
+        "协议正文既没读到、也没说为什么读不到 —— 页面上会是一个空框"
+    )
 
 
 def test_搜索能搜到条目(链路) -> None:

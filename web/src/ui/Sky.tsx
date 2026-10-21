@@ -127,6 +127,41 @@ function dotsFor(theme: ThemeId): Dot[] {
   }
 }
 
+
+/**
+ * 古登堡的十字星屑坐标（1440×1000 的画布上）。
+ *
+ * 写死而不是随机 —— 与粒子同一个理由：随机每次渲染都变，切一下主题再切回来
+ * 位置就跳了，而稳定本身就是这个界面想要的质感。
+ */
+// [x, y, 半径]
+//
+// ※ 尺寸收过一轮：原来 4–9（直径 8–18px），单颗在屏幕上比一行小字还宽，
+//   读起来是「一块块的亮点」而不是星屑。现在 3–6.5。
+const STARDUST = [
+  [104, 268, 6.5], [286, 132, 3], [430, 356, 5], [572, 196, 3.5],
+  [716, 442, 6], [858, 288, 3], [1002, 158, 4.5], [1146, 372, 3.5],
+  [1290, 226, 6.5], [1396, 456, 3], [176, 552, 4], [352, 668, 5.5],
+  [516, 588, 3], [678, 726, 5], [840, 618, 3.5], [1004, 752, 6],
+  [1168, 648, 3], [1332, 786, 4.5],
+] as const
+
+
+/**
+ * 流星群。五条大致平行的弧，各自错开 1.8 秒 —— 单颗流星在 9 秒里只露脸
+ * 一秒出头，观感上就是「偶尔划一下」；成群之后才有「一场」的感觉。
+ *
+ * 终点 `end` 是数组里的百分比，专门给对应的十字星用：流星在哪儿熄灭，
+ * 十字星就在哪儿亮，两者不能对不上。
+ */
+const METEORS = [
+  { track: 'M 620 860 Q 980 500 1220 180', delay: '0s', end: ['84.7%', '18%'], w: 200, h: 13 },
+  { track: 'M 760 920 Q 1120 560 1330 140', delay: '1.8s', end: ['92.4%', '14%'], w: 120, h: 7 },
+  { track: 'M 500 780 Q 880 420 1140 130', delay: '3.6s', end: ['79.2%', '13%'], w: 250, h: 16 },
+  { track: 'M 860 880 Q 1200 520 1380 220', delay: '5.4s', end: ['95.8%', '22%'], w: 155, h: 9 },
+  { track: 'M 660 700 Q 1000 380 1200 100', delay: '7.2s', end: ['83.3%', '10%'], w: 95, h: 6 },
+] as const
+
 /**
  * 远山。
  *
@@ -149,7 +184,13 @@ const RIDGE = {
     front:
       'M0 312 C 168 278 268 302 412 282 S 636 248 780 280 S 984 312 1128 288 S 1348 262 1440 292 L1440 420 L0 420 Z',
   },
-  /** 尖峰 —— 雾、月。比 rolling 陡，山形更硬。 */
+  /** 低矮平缓 —— 雾。雾里的山看不真切，轮廓几乎被吃掉，只剩一条起伏。 */
+  mist: {
+    back: 'M0 302 C 180 288 340 298 520 292 S 880 284 1080 294 S 1320 288 1440 296 L1440 420 L0 420 Z',
+    front:
+      'M0 346 C 200 334 380 342 580 336 S 940 330 1140 340 S 1360 334 1440 342 L1440 420 L0 420 Z',
+  },
+  /** 尖峰 —— 月。清辉下轮廓分明，比 rolling 陡，山形更硬。 */
   peaks: {
     back: 'M0 286 L 186 196 L 306 254 L 468 156 L 628 244 L 790 184 L 968 262 L 1128 204 L 1306 268 L1440 224 L1440 420 L0 420 Z',
     front:
@@ -172,6 +213,7 @@ function sceneOf(theme: ThemeId): RidgeKind | null {
     case 'sakura':
       return 'rolling'
     case 'kiri':
+      return 'mist'
     case 'tsuki':
       return 'peaks'
     case 'yuu':
@@ -199,32 +241,115 @@ function Scene({ theme }: { theme: ThemeId }) {
 }
 
 /**
- * 角落里的两件东西：一方朱印、两道符箓。
+ * 右侧留白里的**中景摆件** —— 每套主题各有一件，不通用。
  *
- * ※ 为什么挑这两样 —— 它们是**中华道教的物件**（印章、符箓），同时也正是
- *   那部作品里最反复出现的东西。不知情的人看到的是「国风」，知情的人看到的
- *   是别的。这套界面要的就是这个：**中华元素是真的，梗藏在底下**。
- *
- * ※ 位置在**内容区右侧的留白**里。卡片盖不到那儿，所以它真的看得见 ——
+ * ※ 位置挑在内容区右边的留白里。卡片盖不到那儿，所以它真的看得见 ——
  *   上一版的远山栽的就是这一点：画得再用心，被卡片压住等于没画。
  *   窄屏没有这块留白，由 CSS 收掉。
+ *
+ * ※ **每套各画各的**，这是这套界面的老规矩（主题换的是气质，不是色号）。
+ *   第一版我在这里放了朱印加符箓、五套共用 —— 那等于把五套拉平成一样，
+ *   已经拿掉了。
+ *
+ * ※ 画的东西都是**中华物件**，但各自贴着自己那套的意象走：
+ *   星图配「宵」、灯笼配「雾」、樱枝配「樱」、水波配「幽」。
+ *   月那套已经有竹影，不再加；古登堡是特别的一类，先不动。
  */
-function Corner() {
-  return (
-    <div className="sky__corner" aria-hidden="true">
-      <svg className="sky__talisman sky__talisman--a" viewBox="0 0 26 92">
-        <rect x="0.5" y="0.5" width="25" height="91" rx="1.5" />
-        <path d="M5 16h16M5 26h16M5 40h16M5 50h16M5 64h16M5 74h16" />
-        <path d="M13 16v58" />
-      </svg>
-      <svg className="sky__talisman sky__talisman--b" viewBox="0 0 26 92">
-        <rect x="0.5" y="0.5" width="25" height="91" rx="1.5" />
-        <path d="M5 20h16M5 34h16M5 48h16M5 68h16" />
-        <path d="M9 20v48M17 20v48" />
-      </svg>
-      <div className="sky__seal">夜抄</div>
-    </div>
-  )
+function Corner({ theme }: { theme: ThemeId }) {
+  switch (theme) {
+    // 宵：星图。北斗七星 —— 中华天文里最有名的一组，也是夜里抬头看得见的。
+    case 'yoi':
+      return (
+        <svg className="sky__obj sky__obj--stars" viewBox="0 0 120 74" aria-hidden="true">
+          <path d="M10 52 L34 44 L52 49 L68 27 L88 19 L104 29 L114 16" />
+          <circle cx="10" cy="52" r="3" />
+          <circle cx="34" cy="44" r="2.4" />
+          <circle cx="52" cy="49" r="2.4" />
+          <circle cx="68" cy="27" r="2.4" />
+          <circle cx="88" cy="19" r="2.8" />
+          <circle cx="104" cy="29" r="2.4" />
+          <circle cx="114" cy="16" r="2.4" />
+        </svg>
+      )
+    // 雾：灯笼。赤夜里的红雾，配一盏没点亮的灯。
+    case 'kiri':
+      return (
+        <svg className="sky__obj sky__obj--lantern" viewBox="0 0 64 104" aria-hidden="true">
+          <path d="M32 4v10" />
+          <rect x="14" y="14" width="36" height="6" rx="1" />
+          <path d="M16 20c-6 8-8 18-8 28s2 20 8 28h32c6-8 8-18 8-28s-2-20-8-28z" />
+          <path d="M32 20v56M22 22c-3 8-4 17-4 26s1 18 4 26M42 22c3 8 4 17 4 26s-1 18-4 26" />
+          <rect x="14" y="76" width="36" height="6" rx="1" />
+          <path d="M32 82v14M27 96h10" />
+        </svg>
+      )
+    // 樱：樱枝。一枝斜出，几朵花。
+    case 'sakura':
+      return (
+        <svg className="sky__obj sky__obj--branch" viewBox="0 0 132 96" aria-hidden="true">
+          <path d="M4 88C34 78 62 62 88 38c10-10 18-22 24-34" />
+          <path d="M46 70c10 2 20 0 28-6M70 50c-2-10-8-18-16-24M96 30c8 4 18 4 26 0" />
+          <circle cx="60" cy="62" r="5" />
+          <circle cx="84" cy="40" r="4.4" />
+          <circle cx="46" cy="34" r="4.4" />
+          <circle cx="114" cy="26" r="4" />
+        </svg>
+      )
+    // 古登堡：十字星屑，**铺满整屏**。
+    // ※ 上一版把它们塞在右侧留白的一小块里（148×108），看着像贴了张贴纸 ——
+    //   星屑就该是散开的，散布在整个失重空间里。
+    // ※ 它们不是稳定的星星：歌里它们「溶けてゆく」，也会「流れ星に」，
+    //   所以做成会自己消失的东西（明灭，不是常亮）。
+    case 'katsuji':
+      return (
+        <svg
+          className="sky__obj sky__obj--stardust"
+          viewBox="0 0 1440 1000"
+          // ※ **不是 `none`。** `none` 会把 1440×1000 的画布硬拉成视口比例，
+          // 于是 16:9 的屏上每颗星被横向拉宽 23%（实测 1.23:1）——
+          // 星是圆的，拉宽就是「胖」。
+          // `slice` 等比放大到铺满、多出来的部分裁掉。桌面尺寸下
+          // 1440×1000 / 1280×800 / 1920×1080 都算过，18 颗一颗不丢。
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden="true"
+        >
+          {STARDUST.map(([x, y, r], i) => (
+            <path
+              key={i}
+              d={[
+                // 四角尖星。肩点（两臂之间的凹口）在 **0.07r** 处 ——
+                // 原来是 0.3r（臂和身一样宽，裁出来是个菱形），
+                // 上一版收到 0.12r，还是偏胖：这块画布是 `slice` 铺满的，
+                // 1920 宽的屏上缩放约 1.33 倍，r=6.5 的那几颗臂基约 2px，
+                // 四个角之间几乎连成一块。
+                // 0.07r ⇒ 臂基 0.14r、臂长 0.93r：跨距不变，看着细一截。
+                `M${x} ${y - r}`,
+                `L${x + r * 0.07} ${y - r * 0.07}`,
+                `L${x + r} ${y}`,
+                `L${x + r * 0.07} ${y + r * 0.07}`,
+                `L${x} ${y + r}`,
+                `L${x - r * 0.07} ${y + r * 0.07}`,
+                `L${x - r} ${y}`,
+                `L${x - r * 0.07} ${y - r * 0.07}`,
+                'Z',
+              ].join(' ')}
+              style={{ animationDelay: `${i * 1.3}s` }}
+            />
+          ))}
+        </svg>
+      )
+    // 幽：水波。幽明微光落在水面上。
+    case 'yuu':
+      return (
+        <svg className="sky__obj sky__obj--ripples" viewBox="0 0 140 70" aria-hidden="true">
+          <path d="M4 16q14-10 28 0t28 0 28 0 28 0 20 0" />
+          <path d="M12 34q14-10 28 0t28 0 28 0 28 0" />
+          <path d="M4 52q14-10 28 0t28 0 28 0 28 0 20 0" />
+        </svg>
+      )
+    default:
+      return null
+  }
 }
 
 export function Sky({ theme }: { theme: ThemeId }) {
@@ -233,7 +358,7 @@ export function Sky({ theme }: { theme: ThemeId }) {
   return (
     <div className="sky" aria-hidden="true">
       <Scene theme={theme} />
-      <Corner />
+      <Corner theme={theme} />
 
       {dots.map((d, i) => (
         <span key={`${theme}-${i}`} className="sky__dot" style={d.style} />
@@ -242,6 +367,47 @@ export function Sky({ theme }: { theme: ThemeId }) {
       {/* 宣纸颗粒 + 暗角。放在最后 = 压在最上层，六套主题共用，
           所以它不参与「每套主题各不相同」那件事。 */}
       <div className="sky__grain" />
+
+      {/* 流星群 + 熄灭时的十字星。
+          ※ 为什么是独立元素而不是伪元素：流星线要用 `scaleX` 从尾往头收短，
+            线一收，挂在线上的伪元素也跟着缩 —— 闪不出一个干净的十字。
+            而且要求是「等拖尾完全消失后再闪」，两者必须分开计时。
+          ※ `--track` 走 CSS 变量，五条弧共用一套规则、各自一条路径。
+
+          ※ 外面那层 `.sky__meteors` 是**参考画布**（1440×1000，钉右上角）：
+            路径的坐标是绝对 px，十字星的位置是百分比，只有放进同一块
+            画布，两者才永远指向同一个点。理由写在 theme.css 那一节。 */}
+      {theme === 'katsuji' && (
+        <div className="sky__meteors">
+          {METEORS.map((m, i) => (
+            <div
+              key={`m${i}`}
+              className="sky__meteor"
+              style={
+                {
+                  '--track': `path('${m.track}')`,
+                  animationDelay: m.delay,
+                  width: `${m.w}px`,
+                  height: `${m.h}px`,
+                } as CSSProperties
+              }
+            />
+          ))}
+          {METEORS.map((m, i) => (
+            <div
+              key={`s${i}`}
+              className="sky__spark"
+              style={
+                {
+                  left: m.end[0],
+                  top: m.end[1],
+                  animationDelay: m.delay,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

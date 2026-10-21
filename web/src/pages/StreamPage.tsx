@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   dropItem,
   getCategories,
+  getItem,
   getItems,
   getPersons,
   patchKind,
@@ -9,10 +10,13 @@ import {
   type Item,
   type ItemPage,
   type Person,
+  type Source,
 } from '../api'
 import { ago, dueInfo, groupLabel, hmText, mdhmText, ymd } from '../lib/time'
 import { kindColor, kindIcon } from '../lib/theme'
 import { IcClock, IcMap, IcPin, IcSearch } from '../ui/icons'
+import { SourceTag } from '../ui/SourceTag'
+import { StatusStrip } from '../ui/Status'
 import './StreamPage.css'
 
 const STEP = 50
@@ -153,6 +157,11 @@ export function StreamPage({ onChanged }: { onChanged: () => void }) {
         </div>
         <div className="phead__side">{count}</div>
       </header>
+
+      {/* ※ 状态条挂在**这一页**，不是配置页里 —— 「这些内容多久更新一次、
+          从哪儿来的」是读信息流时才会冒出来的问题，要跳去另一页才看得到
+          的答案，等于没有答案。 */}
+      <StatusStrip />
 
       <label className="find">
         <IcSearch />
@@ -391,6 +400,8 @@ function Sheet({
   onRemove: () => void
 }) {
   const box = useRef<HTMLDivElement>(null)
+  const [srcs, setSrcs] = useState<Source[] | null>(null)
+  const [srcErr, setSrcErr] = useState<string | null>(null)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -400,6 +411,30 @@ function Sheet({
     box.current?.focus()
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // 打开抽屉时把源消息拉回来。
+  //
+  // ※ 列表接口**不带** sources（那是 N+1），只有详情接口带 ——
+  // 所以「来源 3 条消息」原来在界面上是一个**点不开的数字**：
+  // 用户看得见条数，看不见是哪三条、更看不见它们从哪个源来的。
+  // 抽屉正是那个「我要看依据」的时刻，依据就该在这里。
+  useEffect(() => {
+    let live = true
+    setSrcs(null)
+    setSrcErr(null)
+    getItem(item.item_id)
+      .then((d) => {
+        if (live) setSrcs(d.sources)
+      })
+      .catch((e: unknown) => {
+        // 拉不到就**说拉不到**，不留一个空的「来源消息」标题 ——
+        // 空列表与读取失败在屏幕上长得一样，而下一步完全不同。
+        if (live) setSrcErr(e instanceof Error ? e.message : '读取源消息失败')
+      })
+    return () => {
+      live = false
+    }
+  }, [item.item_id])
 
   return (
     <div className="sheetbg" onClick={onClose}>
@@ -453,6 +488,28 @@ function Sheet({
           <dt>来源</dt>
           <dd>{item.source_count} 条消息</dd>
         </dl>
+
+        {/* ※ 一条来源都没有时**不画这一块**：那是抽取没记下来，
+            与「记了、但都是空的」不是一件事 —— 后者才是该报警的。 */}
+        {item.source_count > 0 && (
+          <div className="sheet__srcs">
+            <h3 className="seclabel">来源消息</h3>
+            {srcErr && <p className="sheet__srcs-err">{srcErr}</p>}
+            {!srcErr && srcs === null && <p className="quiet">读取源消息…</p>}
+            {srcs?.map((s) => (
+              <blockquote key={s.msg_id} className="sheet__src">
+                <div className="sheet__src-head">
+                  <SourceTag source={s.source} />
+                  <span>{s.group_name}</span>
+                  <span>·</span>
+                  <span>{s.sender}</span>
+                  <span className="sheet__src-ago">{mdhmText(s.ts)}</span>
+                </div>
+                <p>{s.content}</p>
+              </blockquote>
+            ))}
+          </div>
+        )}
 
         <div className="sheet__acts">
           <select value={item.kind} onChange={(e) => onRecolor(e.target.value)}>

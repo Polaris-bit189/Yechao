@@ -31,21 +31,38 @@ import {
 } from '../api'
 import { longDateOf, shortDateOf } from '../lib/fmt'
 import { kindColor } from '../lib/theme'
+import { StatusPanel } from '../ui/Status'
+import { Consent } from '../ui/Consent'
 import './SetupPage.css'
 
-type Tab = 'groups' | 'people' | 'llm' | 'categories' | 'reorder' | 'pack'
+type Tab =
+  | 'status'
+  | 'groups'
+  | 'people'
+  | 'llm'
+  | 'categories'
+  | 'consent'
+  | 'reorder'
+  | 'pack'
 
+// ※ 「数据源」排在第一，且是打开这一页时的默认页签。
+// 理由：这一页被打开得最勤的时刻是「它到底在不在跑、内容从哪儿来的」——
+// 而那正是这一格回答的问题。配置本身（群 / 人物 / 类目）是**改一次就不动**
+// 的东西，不该占着默认位置。
 const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'status', label: '数据源' },
   { id: 'groups', label: '群' },
   { id: 'people', label: '人物' },
   { id: 'llm', label: 'LLM' },
   { id: 'categories', label: '类目' },
+  // 「授权」紧挨着「数据源」：它管的就是那几个带凭据的源能不能启动。
+  { id: 'consent', label: '授权' },
   { id: 'reorder', label: '重排' },
   { id: 'pack', label: '导入导出' },
 ]
 
 export function SetupPage({ onChanged }: { onChanged: () => void }) {
-  const [tab, setTab] = useState<Tab>('groups')
+  const [tab, setTab] = useState<Tab>('status')
 
   return (
     <div className="wrap">
@@ -71,10 +88,12 @@ export function SetupPage({ onChanged }: { onChanged: () => void }) {
         ))}
       </nav>
 
+      {tab === 'status' && <StatusPanel />}
       {tab === 'groups' && <Groups onChanged={onChanged} />}
       {tab === 'people' && <People onChanged={onChanged} />}
       {tab === 'llm' && <Llm onChanged={onChanged} />}
       {tab === 'categories' && <Categories onChanged={onChanged} />}
+      {tab === 'consent' && <Consent />}
       {tab === 'reorder' && <Reorder onChanged={onChanged} />}
       {tab === 'pack' && <Pack />}
     </div>
@@ -525,7 +544,7 @@ function Categories({ onChanged }: { onChanged: () => void }) {
   return (
     <>
       <p className="hint">
-        「判据」会**逐字**进提示词，所以它写的是「这一类该怎么判」，
+        「判据」会<strong>逐字</strong>进提示词，所以它写的是「这一类该怎么判」，
         不是给自己看的备注。改名不会动已有条目，旧名字会留成别名。
       </p>
 
@@ -817,12 +836,12 @@ function Reorder({ onChanged }: { onChanged: () => void }) {
   return (
     <>
       <p className="hint">
-        用当前的类目判据把**已有条目**重新判一遍。新加的类目只影响以后抽出来的东西，
+        用当前的类目判据把<strong>已有条目</strong>重新判一遍。新加的类目只影响以后抽出来的东西，
         已经入库的要跑这一步才会跟上。
       </p>
 
       <p className="hint">
-        ※ 手改过类目的条目**不会被覆盖**。
+        ※ 手改过类目的条目<strong>不会被覆盖</strong>。
       </p>
 
       <div className="acts">

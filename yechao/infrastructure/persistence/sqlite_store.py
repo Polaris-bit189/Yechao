@@ -632,9 +632,15 @@ class SqliteStore:
         return _row_to_item(row) if row else None
 
     def sources_of(self, item_id: int) -> list[dict[str, Any]]:
+        """这条条目挂着的来源消息。
+
+        ※ `m.source` 一直存在库里（摄取时写进去的），但**原来没带出来** ——
+        于是界面上分不出这条来自 QQ 群、邮件、会议还是网页，「多源」这件事
+        在 UI 上是隐形的。带上它，判据就与 `messages.source` 一处对齐。
+        """
         rows = self.conn.execute(
             """
-            SELECT m.msg_id, m.ts, m.sender, m.group_id, m.content, s.quote
+            SELECT m.msg_id, m.ts, m.sender, m.group_id, m.source, m.content, s.quote
             FROM item_sources s JOIN messages m ON m.msg_id = s.msg_id
             WHERE s.item_id = ?
             ORDER BY m.ts
@@ -642,6 +648,27 @@ class SqliteStore:
             (item_id,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def counts_by_source(self) -> list[dict[str, Any]]:
+        """库里消息按来源分组。见端口上的注释（口径：「库里现在」）。"""
+        rows = self.conn.execute(
+            """
+            SELECT source, COUNT(*) AS n, MAX(ts) AS last_ts
+            FROM messages
+            GROUP BY source
+            ORDER BY n DESC, source
+            """
+        ).fetchall()
+        return [
+            {
+                # ※ `source` 是 NOT NULL DEFAULT ''，但旧库/外部写入理论上
+                # 可能给 NULL —— 归一成空串，让「没标来源」只有一种写法。
+                "source": r["source"] or "",
+                "messages": int(r["n"]),
+                "last_ts": int(r["last_ts"] or 0),
+            }
+            for r in rows
+        ]
 
     def counts_by_kind(self) -> dict[str, int]:
         rows = self.conn.execute(

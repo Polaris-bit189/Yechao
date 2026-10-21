@@ -390,6 +390,52 @@
   color: var(--fg-2);
 }
 
+/* 源消息块。与日报页那份（`.cited__src`）形状相同，但**各写一份** ——
+ * 两个页面的字号阶与缩进不同，共用一个类名会让改其中一页时另一页跟着动，
+ * 而那个动静在另一页上是看不见的。 */
+.sheet__srcs {
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+.sheet__src {
+  margin: var(--s3) 0;
+  padding-left: var(--s3);
+  border-left: 1px solid var(--line-2);
+  font-size: var(--fs-sub);
+  line-height: var(--lh-loose);
+}
+
+.sheet__src-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--fg-3);
+  font-size: var(--fs-tag);
+}
+
+/* 时间推到最右。`tabular-nums` 让不同宽度的数字对齐 —— 一列时间戳
+ * 参差不齐比它看起来更吵。 */
+.sheet__src-ago {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet__src p {
+  margin-top: 2px;
+  color: var(--fg-2);
+}
+
+/* ※ 刻意**不用** `.msg--bad`：那个类定义在 SetupPage.css 里，
+ * 而这一页不 import 它 —— 能用只是因为打包之后所有 CSS 在同一张表上。
+ * 那种依赖在删掉配置页那天会静默失效（错误消息突然没样式了）。 */
+.sheet__srcs-err {
+  color: var(--danger);
+  font-size: var(--fs-sub);
+}
+
 .sheet__acts {
   display: flex;
   gap: var(--s2);
