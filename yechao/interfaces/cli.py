@@ -54,6 +54,7 @@ COMMANDS = (
     "doctor",
     "cloud",
     "ledger",
+    "consent",
 )
 
 #: 默认端口。
@@ -78,6 +79,7 @@ USAGE = """\
   python -m yechao export     生成群清单快照（配置页用）
   python -m yechao metrics    端到端指标（对合成语料的真值）
   python -m yechao doctor     自检：环境、配置、库、模型端点
+  python -m yechao consent    第三方账号授权协议（看正文、看状态、接受）
 
 通用选项：
   --data-dir DIR    数据目录（默认 data/）
@@ -135,6 +137,13 @@ def _fail(msg: str) -> None:
 
 
 # ── 参数解析 ────────────────────────────────────────────────────────
+
+
+#: 哪些命令收**位置参数**（`consent accept` 这种子命令）。
+#:
+#: ※ 白名单而不是「全都收」：解析器收宽了，`python -m yechao demo adta`
+#: 就会被静默放过 —— 而那是一个拼错的开关，下一步是「去改命令行」。
+_TAKES_POSITIONAL = frozenset({"consent"})
 
 
 class Args:
@@ -243,6 +252,17 @@ class Args:
                 elif a == "--msg":
                     self.msg_id = int(val)
                 i += 2
+                continue
+            if not a.startswith("-"):
+                # ※ 位置参数进 `rest`（`consent accept` 这种子命令用它）。
+                # 原来一律进 `unknown`，于是 `python -m yechao consent accept`
+                # 报的是「不认识的参数：accept」。
+                #
+                # ※ **不是所有命令都收**：别的命令多给一个词仍然要报错
+                # （`demo adta` 这种手滑不能被放过）—— 校验在 `main` 里，
+                # 按 `_TAKES_POSITIONAL` 那张表。
+                self.rest.append(a)
+                i += 1
                 continue
             self.unknown.append(a)
             i += 1
@@ -899,6 +919,71 @@ def _ledger_hint(st: Any, run_id: str) -> None:
     _say(f"    主库 {_db_line(st)}")
     _say(f"    查这一次：python -m yechao ledger --run {run_id}")
     _say("    查最近几次：python -m yechao ledger")
+
+
+def _cmd_consent(args: Args) -> int:
+    """第三方账号授权协议：看正文在哪、看签没签、接受。
+
+    ## 为什么需要这条命令
+
+    `sources/consent.py` 的报错文案写着「跑 `python -m yechao consent accept`」，
+    而那条命令**原来不存在** —— 于是需要签署协议的那几个源（IMAP 信箱、带登录态
+    的订阅、浏览器登录态）在命令行上只剩「手写一份 consent.toml」这一条路，
+    而用户被告知的第一件事是跑一条跑不通的命令。
+
+    ## 两个动作
+
+      · `consent`         —— 协议正文在哪、当前版本、签没签、怎么签
+      · `consent accept`  —— 记一条接受记录（写到 `<config_dir>/consent.toml`）
+
+    ※ **接受不等于能访问**：登录态仍然要单独配。这句话必须留着 —— 否则用户
+    签完还连不上，会以为协议没生效。
+    """
+    from yechao.bootstrap import make_app_or_explain
+
+    action = args.rest[0] if args.rest else ""
+    if action not in ("", "accept", "status"):
+        _fail(f"不认识的子命令：{action}")
+        _say("  用法：python -m yechao consent          看状态、看协议正文在哪")
+        _say("        python -m yechao consent accept   接受协议")
+        return 2
+
+    st = _settings_from(args)
+    app = make_app_or_explain(settings=st)
+    try:
+        doc, current, accepted = app.consent_info()
+        if action == "accept":
+            if accepted == current:
+                _say("夜抄 · 第三方账号授权协议")
+                _ok(f"已经接受过了（版本 {current}），不重复记录")
+                return 0
+            where = app.accept_consent()
+            _say("夜抄 · 第三方账号授权协议")
+            _ok(f"已接受（版本 {current}），记录写在 {where}")
+        else:
+            _say("夜抄 · 第三方账号授权协议")
+            _say(f"  协议正文 {doc}")
+            _say(f"  当前版本 {current}")
+            if accepted is None:
+                _warn("还没接受 —— 需要它的源（IMAP / 登录态订阅 / 浏览器登录态）在启动时会拒绝")
+                _say()
+                _say("要接受：先读一遍上面那份正文，然后跑")
+                _say("  python -m yechao consent accept")
+            elif accepted != current:
+                _warn(
+                    f"签的是**旧版本** {accepted} —— 协议改版了，要重新接受（当前 {current}）"
+                )
+                _say()
+                _say("  python -m yechao consent accept")
+            else:
+                _ok(f"已接受（版本 {accepted}）")
+    finally:
+        app.close()
+
+    _say()
+    _say("※ 接受协议**不等于**能访问：登录态仍然要单独配"
+         "（见 sources.toml 与各站的环境变量）。")
+    return 0
 
 
 def _cmd_ledger(args: Args) -> int:
@@ -1567,6 +1652,7 @@ _HANDLERS = {
     "cloud": _cmd_cloud,
     "serve": _cmd_serve,
     "ledger": _cmd_ledger,
+    "consent": _cmd_consent,
 }
 
 
@@ -1580,8 +1666,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     args = Args(argv if argv is not None else sys.argv[1:])
 
-    if args.unknown:
-        _fail(f"不认识的参数：{' '.join(args.unknown)}")
+    # ※ 只有白名单里的命令收位置参数 —— 其余命令多给一个词仍然算「不认识的
+    # 参数」（`demo adta` 这种手滑必须报出来，不能因为解析器收宽了就静默忽略）。
+    bad = list(args.unknown)
+    if args.command not in _TAKES_POSITIONAL:
+        bad += args.rest
+    if bad:
+        _fail(f"不认识的参数：{' '.join(bad)}")
         _say()
         _say(USAGE)
         return 2

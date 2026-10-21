@@ -116,6 +116,15 @@ class Settings:
                 st.db_path = st.data_dir / DEFAULT_DB_NAME
         if config_dir:
             st.config_dir = Path(config_dir)
+            # ※ **同时写进环境变量。** 数据源那一侧（`sources/_common.config_dir()`）
+            # 读的是它，而它**不能** import `bootstrap`（导入环）—— 所以「用哪个配置目录」
+            # 只能在这一处向下传一次。
+            #
+            # 不写的症状：`--config-dir X` 之后，App 读 X 的 `groups.toml`，而源
+            # 读**默认目录**的 `sources.toml` / `consent.toml`。用户看到的是「我指定了
+            # 配置目录，源却看不见它」—— 与 `--data-dir` 那个「参数只生效一半」
+            # 是同一个形状（见上面那段注释）。
+            os.environ["YECHAO_CONFIG_DIR"] = str(st.config_dir)
         if db_path:
             st.db_path = Path(db_path)
         return st
@@ -316,6 +325,33 @@ class App:
             # 账里的时间戳全项目只有一处口径。
             clock=self.clock,
         )
+
+    # ── 第三方账号授权协议 ──────────────────────────────────────
+    #
+    # ※ 为什么由组合根露出来、而不是让 CLI 直接 import `sources.consent`：
+    # 入口层不许 import 适配层（`tests/contracts/test_layering.py::
+    # test_入口层不直接摸适配层` 钉着这条）。而「签协议」是一个**动作**
+    # （要写文件），不是配置读取 —— 它需要一个能落盘的地方，那正是组合根的职责。
+
+    def consent_info(self) -> tuple[Path, str, str | None]:
+        """`(协议正文路径, 当前版本, 已接受的版本或 None)`。
+
+        ※ 三个一起给：「签没签」与「签的是哪一版」必须能并排看 —— 只报
+        「已接受」的话，协议改版之后用户会以为还作数。
+        """
+        from yechao.infrastructure.sources import consent
+
+        return (
+            consent.protocol_doc_path(),
+            consent.PROTOCOL_VERSION,
+            consent.accepted_version(),
+        )
+
+    def accept_consent(self, *, note: str = "") -> Path:
+        """记一条接受记录，返回写到了哪儿。"""
+        from yechao.infrastructure.sources import consent
+
+        return consent.record_acceptance(note=note)
 
     def cloud_deps(self) -> Any:
         from yechao.application import cloud_refine

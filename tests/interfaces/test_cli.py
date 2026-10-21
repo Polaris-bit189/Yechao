@@ -476,6 +476,26 @@ def test_ingest_读不到源时也说清账落在哪(workdir, monkeypatch, capsy
     assert "run_id=" in text, "失败那条路上没给账的线索"
 
 
+def test_consent_命令能签协议且记在配置目录里(tmp_path) -> None:
+    """※ 报错文案让人跑 `python -m yechao consent accept` —— 那条命令必须存在。
+
+    原来它**不存在**：`record_acceptance()` 写好了、没有任何地方调用，于是需要
+    签署协议的那几个源（IMAP 信箱、带登录态的订阅、浏览器登录态）在命令行上
+    只剩「手写一份 consent.toml」这一条路。
+    """
+    cfg = tmp_path / "配置"
+    data = tmp_path / "数据"
+    assert main(["consent", "--data-dir", str(data), "--config-dir", str(cfg)]) == 0
+    assert not (cfg / "consent.toml").exists(), "还没签就写出了记录"
+
+    assert main(["consent", "accept", "--data-dir", str(data), "--config-dir", str(cfg)]) == 0
+    assert (cfg / "consent.toml").exists(), (
+        "接受记录没落在 --config-dir 里 —— 数据源那一侧看不见它"
+    )
+    # 再跑一次不重复记录（也不报错）
+    assert main(["consent", "accept", "--data-dir", str(data), "--config-dir", str(cfg)]) == 0
+
+
 def test_doctor_的失败行不会跑到日志最前面(tmp_path) -> None:
     """※ stdout 在**重定向 / 管道 / 被 docker 捕获**时是块缓冲，而 stderr 不是。
 

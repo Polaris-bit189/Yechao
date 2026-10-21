@@ -518,6 +518,25 @@ def test_分组号写错时抛(指向夹具, monkeypatch) -> None:
         web_source.resolve_target()
 
 
+def test_config_dir_参数也会到达源那一侧(tmp_path, monkeypatch) -> None:
+    """※ `--config-dir X` 之后，**源读的 `sources.toml` 也必须来自 X**。
+
+    源那一侧读的是环境变量（`_common.config_dir()`），而它不能 import
+    `bootstrap`（导入环）—— 所以 `Settings.from_paths` 必须把 `--config-dir`
+    写进同一处。不写的话：App 读 X 的 `groups.toml`，源读**默认目录**的
+    `sources.toml` / `consent.toml`，症状是「我指定了配置目录，源却看不见它」。
+    """
+    from yechao.bootstrap import Settings
+
+    # 先让 monkeypatch 记住原值，测完还原（这个用例会真的写环境变量）
+    monkeypatch.delenv(web_source.CONFIG_DIR_ENV, raising=False)
+    target = tmp_path / "改过的配置目录"
+    Settings.from_paths(config_dir=target)
+
+    assert web_source._config_dir() == target
+    assert (target / web_source.SOURCES_FILE).parent == web_source._config_dir()
+
+
 def test_配置目录的口径与组合根一致(tmp_path, monkeypatch) -> None:
     """※ 本模块**不能** import `bootstrap`（会造出导入环），所以 `config_dir`
     的默认值在这里重新算了一次。代价是「默认值有两处」—— 这条判据把两边钉住。
