@@ -44,7 +44,6 @@
 from __future__ import annotations
 
 import ctypes
-import ctypes.wintypes as wt
 import os
 import sys
 from pathlib import Path
@@ -69,6 +68,15 @@ RADIUS = 1 << 16
 #: 可打印 ASCII。
 _PRINTABLE = frozenset(range(0x20, 0x7F))
 
+# ※ **不用 `ctypes.wintypes`**：那个模块在 Linux / macOS 上**import 就抛**
+# （它的 `VARIANT_BOOL` 用了 `_type_ = "v"`，而那个类型码只在 Windows 上有）。
+# 而本模块是**模块级**被导入的（`sources/__init__` → `qq_source` → `qq_ntdb` →
+# 这里），所以一句 `import ctypes.wintypes` 会让**非 Windows 机器上整个程序起不来**
+# —— 报错是一句与 QQ 毫无关系的 ValueError。判据与 `qq_cipher` 里那个延迟导入
+# `cryptography` 是同一条：**平台/可选依赖的缺失不该砸掉默认那条路**。
+# 这里直接用 `ctypes` 的等价类型（`DWORD` 就是 `c_ulong`），于是本文件在任何
+# 平台上都能被导入；真正的 Windows 调用由 `supported()` 挡住。
+
 PROCESS_QUERY_INFORMATION = 0x0400
 PROCESS_VM_READ = 0x0010
 TH32CS_SNAPPROCESS = 0x00000002
@@ -85,15 +93,15 @@ PROCESS_NAME = "qq.exe"
 
 class _PROCESSENTRY32(ctypes.Structure):
     _fields_ = [
-        ("dwSize", wt.DWORD),
-        ("cntUsage", wt.DWORD),
-        ("th32ProcessID", wt.DWORD),
+        ("dwSize", ctypes.c_ulong),
+        ("cntUsage", ctypes.c_ulong),
+        ("th32ProcessID", ctypes.c_ulong),
         ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
-        ("th32ModuleID", wt.DWORD),
-        ("cntThreads", wt.DWORD),
-        ("th32ParentProcessID", wt.DWORD),
+        ("th32ModuleID", ctypes.c_ulong),
+        ("cntThreads", ctypes.c_ulong),
+        ("th32ParentProcessID", ctypes.c_ulong),
         ("pcPriClassBase", ctypes.c_long),
-        ("dwFlags", wt.DWORD),
+        ("dwFlags", ctypes.c_ulong),
         ("szExeFile", ctypes.c_char * 260),
     ]
 
@@ -102,13 +110,13 @@ class _MEMORY_BASIC_INFORMATION(ctypes.Structure):
     _fields_ = [
         ("BaseAddress", ctypes.c_void_p),
         ("AllocationBase", ctypes.c_void_p),
-        ("AllocationProtect", wt.DWORD),
-        ("__pad", wt.DWORD),
+        ("AllocationProtect", ctypes.c_ulong),
+        ("__pad", ctypes.c_ulong),
         ("RegionSize", ctypes.c_size_t),
-        ("State", wt.DWORD),
-        ("Protect", wt.DWORD),
-        ("Type", wt.DWORD),
-        ("__pad2", wt.DWORD),
+        ("State", ctypes.c_ulong),
+        ("Protect", ctypes.c_ulong),
+        ("Type", ctypes.c_ulong),
+        ("__pad2", ctypes.c_ulong),
     ]
 
 

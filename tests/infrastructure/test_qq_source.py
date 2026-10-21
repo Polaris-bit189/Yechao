@@ -504,6 +504,40 @@ def test_没装_cryptography_时三步复现那条路照样通(tmp_path) -> None
     )
 
 
+def test_没有_ctypes_wintypes_时也能导入() -> None:
+    """※ `ctypes.wintypes` 在 Linux / macOS 上 **import 就抛**
+    （它的 `VARIANT_BOOL` 用了只在 Windows 上存在的类型码 `"v"`）。
+
+    而 `qq_key` 是**模块级**被导入的（`sources/__init__` → `qq_source` →
+    `qq_ntdb` → `qq_key`）。顶层一句 `import ctypes.wintypes` 会让**非 Windows
+    的评委机器上整个程序起不来**，报错是一句与 QQ 毫无关系的 ValueError。
+
+    这条用一个挡住它的子进程把这件事钉住 —— 与上面那条 cryptography 同一个取向。
+    """
+    code = textwrap.dedent(
+        """
+        import importlib.abc, sys
+        class Blocker(importlib.abc.MetaPathFinder):
+            def find_spec(self, name, path, target=None):
+                if name == "ctypes.wintypes":
+                    raise ImportError("No module named 'ctypes.wintypes'")
+                return None
+        sys.meta_path.insert(0, Blocker())
+        import yechao.bootstrap
+        from yechao.infrastructure.sources import known_names
+        print("ok", known_names())
+        """
+    )
+    r = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    assert r.returncode == 0, (
+        "没有 ctypes.wintypes 时导入就挂了 —— 非 Windows 的机器上必现：\n"
+        f"{r.stderr[-600:]}"
+    )
+
+
 def test_没装_cryptography_时报错并说清怎么装(加密库, monkeypatch) -> None:
     """※ 与 `browser_cookies` 同一条判据：延迟导入、缺了**报错并说清怎么装**，
     不回落成「读不到」—— 回落的话症状是「QQ 明明开着，它说读不到」。
