@@ -76,3 +76,4 @@ cd web && MOBILE=1 node tools/shot.mjs yoi mobile
 - 移动端可点击目标 ≥44×44；输入框字号 ≥16px。
 - 768 / 1440 宽度下，桌面侧栏固定 224px、内容左距 224px，行为与改造前一致。
 - 离线时缓存数据必须显示「缓存于 HH:MM」，写操作必须失败可见。
+- **沙箱网络限制**：CodeArts 沙箱可能拦截 Chromium 访问 `127.0.0.1`（curl 200 但 Playwright `ERR_ADDRESS_UNREACHABLE`）。不要为此反复启动 serve；浏览器 HTTP 验收由监督方在沙箱外做。`file://` 只能做 T2–T4 的几何辅助自检，不能用于 T5–T6 的 SW/离线验收，也不能宣称「HTTP 验收通过」。

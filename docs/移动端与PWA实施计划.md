@@ -348,3 +348,14 @@ curl -sI http://127.0.0.1:9000/manifest.webmanifest
 - 离线：应用壳与日报可读；横幅含「缓存于 HH:MM」；写操作失败可见。
 - 主题：六套切换后 `meta#theme-color` 同步；`theme.test.ts` 全绿。
 - 零 emoji；零控制台 error；`npm test`、`pytest`、`verify` 全绿。
+
+## 沙箱网络限制与验收兜底
+
+CodeArts 终端沙箱会**间歇性**拦截 Chromium 对 `127.0.0.1` 的访问：`curl` 返回 200、`netstat` 显示端口 `LISTENING`，但 Playwright 报 `net::ERR_ADDRESS_UNREACHABLE`。**这不是代码故障，也不是停机的理由。**
+
+因此：
+
+- **浏览器 HTTP 验收由监督方在沙箱外执行**，以监督方的结果为准。CodeArts 不得用 `file://` 的结果宣称「HTTP 验收通过」。
+- **T2–T4**（布局/静态资源）：允许用 `file://` 加载 `web/dist` 做几何辅助自检，但报告里必须标注「file:// 几何自检」，不能写成 HTTP 验收。
+- **T5–T6**（Service Worker / 离线）：**不能**用 `file://` 验证——它不是安全上下文、没有 SW、没有真实网络回落。这两项必须由监督方在 HTTP/HTTPS 下验收。
+- CodeArts 不要为验收反复启动 `serve`；它的职责是**改代码 + 单测 + `npm run build` + 提交**。网络渠道问题交给监督方。
