@@ -88,10 +88,27 @@ function prefersReducedMotion(): boolean {
  */
 export function paint(id: ThemeId, animate = false): void {
   const root = document.documentElement
-  // 值没变就别动 —— 省掉一次无意义的过渡（首帧会撞上这种情况）。
-  if (root.getAttribute('data-theme') === id) return
 
-  const apply = () => root.setAttribute('data-theme', id)
+  // 浏览器 UI 的颜色跟着主题走：读计算后的 --bg，不在这里写颜色字面量
+  // （theme.test.ts 会扫 TS/TSX 里的原始颜色）。
+  const syncThemeColor = () => {
+    const meta = document.querySelector<HTMLMetaElement>('meta#theme-color')
+    if (!meta) return
+    const bg = getComputedStyle(root).getPropertyValue('--bg').trim()
+    if (bg) meta.content = bg
+  }
+
+  // 值没变就别动 —— 省掉一次无意义的过渡（首帧会撞上这种情况）。
+  // 首帧仍要同步一次：静态 HTML 里的 theme-color 只保证默认主题。
+  if (root.getAttribute('data-theme') === id) {
+    syncThemeColor()
+    return
+  }
+
+  const apply = () => {
+    root.setAttribute('data-theme', id)
+    syncThemeColor()
+  }
 
   const doc = document as unknown as {
     startViewTransition?: (cb: () => void) => unknown

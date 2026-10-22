@@ -1,0 +1,41 @@
+{
+  "name": "夜抄",
+  "short_name": "夜抄",
+  "description": "把散在多个来源里的通知、报名、活动与失物招领，整理成一份按天可读的日报。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "id": ".",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0c12",
+  "theme_color": "#0a0c12",
+  "categories": ["news", "productivity"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
