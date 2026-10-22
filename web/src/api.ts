@@ -5,6 +5,8 @@
  * 本仓库自己的后端代码，不是别处。
  */
 
+import { noteCacheHit, noteOffline, noteOnline } from './pwa/offline'
+
 export interface Item {
   item_id: number
   /** 类目 slug。判据是「这条消息**要读者做什么**」—— 见后端 categories.py。 */
@@ -290,8 +292,19 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(url, init)
   } catch {
+    noteOffline()
     setAlive(false)
     throw new ApiError('请求没能发出去，检查服务是否在运行', 0)
+  }
+
+  // SW 的离线约定：503 + X-Yechao-Offline 表示「没网且没有缓存」；
+  // X-Yechao-Cache: hit 表示这次读的是缓存，并带缓存时间（秒）。
+  if (res.headers.get('X-Yechao-Offline') === '1') noteOffline()
+  else if (navigator.onLine) noteOnline()
+
+  if (res.headers.get('X-Yechao-Cache') === 'hit') {
+    const at = Number(res.headers.get('X-Yechao-Cached-At'))
+    if (Number.isFinite(at)) noteCacheHit(at)
   }
 
   setAlive(res.status < 500)

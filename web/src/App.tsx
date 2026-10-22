@@ -11,6 +11,7 @@ import { BoundaryPage } from './pages/BoundaryPage'
 import { SetupPage } from './pages/SetupPage'
 import { EGG, MENU, paint, persist, stored, watchEgg, type ThemeId } from './lib/theme'
 import { PWA_UPDATE_EVENT, isPwaUpdateEvent } from './pwa/register'
+import { OfflineBanner } from './ui/OfflineBanner'
 import {
   IcBoundary,
   IcDigest,
@@ -239,6 +240,9 @@ export function App() {
           {/* 提醒条压在内容区顶部，不盖住左侧导航 —— 它说的是这一页的事，
               不是全局状态。 */}
           <Remind onDone={() => setRemindDone(true)} />
+
+          {/* 离线/缓存横幅是**流内**元素：它推开内容，不盖住第一屏。 */}
+          <OfflineBanner />
 
           <div className="main__col">
             {page === 'day' && <DayPage key={`d${tick}`} />}

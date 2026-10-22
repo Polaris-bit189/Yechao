@@ -107,6 +107,23 @@
   color: var(--fg-2);
 }
 
+.helpcard__install {
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+.helpcard__install h3 {
+  margin-bottom: var(--s2);
+  font-size: var(--fs-card);
+}
+
+.helpcard__install p {
+  margin-bottom: var(--s2);
+  color: var(--fg-2);
+  font-size: var(--fs-note);
+}
+
 .helpcard button {
   width: 100%;
   padding: var(--s2);

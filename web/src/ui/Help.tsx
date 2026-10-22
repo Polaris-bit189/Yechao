@@ -1,4 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  clearOfflineCaches,
+  getInstallPrompt,
+  installHint,
+  promptInstall,
+  subscribeInstall,
+} from '../pwa/install'
 
 /**
  * 左下角问号打开的东西。
@@ -13,6 +20,10 @@ import { useEffect, useRef } from 'react'
  */
 export function Help({ onClose }: { onClose: () => void }) {
   const cardRef = useRef<HTMLDivElement>(null)
+  // 订阅安装提示事件：`beforeinstallprompt` 可能晚于打开帮助才到。
+  useSyncExternalStore(subscribeInstall, getInstallPrompt)
+  const hint = installHint()
+  const [cacheCleared, setCacheCleared] = useState(false)
 
   useEffect(() => {
     const card = cardRef.current
@@ -82,6 +93,29 @@ export function Help({ onClose }: { onClose: () => void }) {
           <dt>撤销</dt>
           <dd>左下角「撤销」，一次退一步</dd>
         </dl>
+
+        <div className="helpcard__install">
+          <h3>装到桌面</h3>
+          {hint === 'installed' && <p>已经在独立窗口里运行。</p>}
+          {hint === 'prompt' && (
+            <button type="button" onClick={() => void promptInstall()}>
+              安装到桌面
+            </button>
+          )}
+          {hint === 'ios' && <p>在 Safari 里点「分享」→「添加到主屏幕」。</p>}
+          {hint === 'other' && (
+            <p>用浏览器菜单里的「添加到主屏幕」；鸿蒙浏览器同样按浏览器菜单操作。</p>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              void clearOfflineCaches().then(() => setCacheCleared(true))
+            }}
+          >
+            清除离线缓存
+          </button>
+          {cacheCleared && <p>已清除，刷新后生效。</p>}
+        </div>
 
         <button type="button" onClick={onClose}>
           知道了

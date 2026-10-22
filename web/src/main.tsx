@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { paint, stored } from './lib/theme'
+import { initInstall } from './pwa/install'
 import { registerPwa } from './pwa/register'
 import './styles/theme.css'
 import './styles/base.css'
@@ -19,4 +20,5 @@ createRoot(host).render(
 )
 
 // 生产构建才真正注册；开发与局域网 http 下 registerPwa 自己会跳过。
+initInstall()
 registerPwa()

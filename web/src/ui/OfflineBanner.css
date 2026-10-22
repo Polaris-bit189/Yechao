@@ -1,0 +1,26 @@
+/* 离线/缓存横幅。位置在内容区顶部，**推开**内容而不是盖住它。 */
+.offlinebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  max-width: var(--page);
+  margin: 0 auto var(--s4);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r2);
+  background: var(--surface-2);
+  color: var(--fg-2);
+  font-size: var(--fs-note);
+}
+
+.offlinebar__go {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border-radius: var(--r1);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--fs-note);
+  white-space: nowrap;
+}
