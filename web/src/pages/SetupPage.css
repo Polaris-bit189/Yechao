@@ -291,7 +291,8 @@
 
   .tabs__btn {
     flex-shrink: 0;
-    /* 触控目标 ≥44×44。 */
+    /* 触控目标 ≥44×44：单字标签（「群」）光靠 padding 只有 37px 宽。 */
+    min-width: 44px;
     min-height: 44px;
     padding: 0 var(--s3);
     white-space: nowrap;

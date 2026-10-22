@@ -27,7 +27,11 @@ const NAMES = ['digests', 'feed', 'cats', 'calendar', 'privacy', 'settings']
 
 // MOBILE=1 拍窄屏（375×812，规格里移动端截图用的尺寸）。
 const MOBILE = process.env.MOBILE === '1'
-const SIZE = MOBILE ? { width: 375, height: 812 } : { width: 1440, height: 1000 }
+// WIDTH/HEIGHT 可显式覆盖，便于 320 与 768 的档位截图。
+const SIZE = {
+  width: Number(process.env.WIDTH) || (MOBILE ? 375 : 1440),
+  height: Number(process.env.HEIGHT) || (MOBILE ? 812 : 1000),
+}
 
 const b = await chromium.launch()
 const p = await b.newPage({ viewport: SIZE })

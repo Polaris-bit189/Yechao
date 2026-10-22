@@ -452,6 +452,26 @@
   }
 }
 
+/* 768–900：内容区只有约 496px（rail 224 + 左右内边距），
+   500px 日历 + 当月侧列放不下。与窄屏一样堆叠，别在平板上横向溢出。 */
+@media (min-width: 768px) and (max-width: 900px) {
+  .monthwrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .monthwrap__cal,
+  .monthwrap__day,
+  .monthwrap__side {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .monthbar__nav {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 /* 小屏档：格子最小高度再收一档，320 宽下七列不会挤到看不清数字。 */
 @media (max-width: 359px) {
   .grid__cell {
