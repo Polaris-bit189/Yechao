@@ -1321,7 +1321,45 @@ def _mount_web(api: FastAPI, app_obj: Any) -> None:
 
     @api.get("/")
     def _index() -> Any:
-        return FileResponse(str(dist / "index.html"))
+        return FileResponse(
+            str(dist / "index.html"),
+            headers={"Cache-Control": "no-cache"},
+        )
+
+    @api.get("/index.html")
+    def _index_html() -> Any:
+        return FileResponse(
+            str(dist / "index.html"),
+            headers={"Cache-Control": "no-cache"},
+        )
+
+    @api.get("/manifest.webmanifest")
+    def _manifest() -> Any:
+        path = dist / "manifest.webmanifest"
+        if not path.is_file():
+            return _error(
+                501,
+                "dist/manifest.webmanifest 不存在：重新 `cd web && npm run build`。",
+            )
+        return FileResponse(
+            str(path),
+            media_type="application/manifest+json",
+            headers={"Cache-Control": "no-cache"},
+        )
+
+    @api.get("/sw.js")
+    def _service_worker() -> Any:
+        path = dist / "sw.js"
+        if not path.is_file():
+            return _error(501, "dist/sw.js 不存在：重新 `cd web && npm run build`。")
+        return FileResponse(
+            str(path),
+            media_type="text/javascript",
+            headers={
+                "Cache-Control": "no-cache",
+                "Service-Worker-Allowed": "/",
+            },
+        )
 
     api.mount("/", StaticFiles(directory=str(dist), html=True), name="web")
 
