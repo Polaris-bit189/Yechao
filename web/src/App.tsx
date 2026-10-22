@@ -10,6 +10,7 @@ import { MonthPage } from './pages/MonthPage'
 import { BoundaryPage } from './pages/BoundaryPage'
 import { SetupPage } from './pages/SetupPage'
 import { EGG, MENU, paint, persist, stored, watchEgg, type ThemeId } from './lib/theme'
+import { PWA_UPDATE_EVENT, isPwaUpdateEvent } from './pwa/register'
 import {
   IcBoundary,
   IcDigest,
@@ -78,6 +79,9 @@ export function App() {
   const [toastOut, setToastOut] = useState(false)
   // 提醒条问过没有。问过就不显示，顶部那 36px 也不留（见 App.css 的 .is-bare）。
   const [remindDone, setRemindDone] = useState(remindAnswered)
+  // 有新版本在等待：由 register.ts 发事件，用户点「更新」才接管。
+  const [updateWorker, setUpdateWorker] = useState<ServiceWorker | null>(null)
+  const wantReload = useRef(false)
   // 顶部标签条（窄屏下可横滑）。切页时把选中的标签滚进视野。
   const navRef = useRef<HTMLUListElement>(null)
 
@@ -122,6 +126,24 @@ export function App() {
       clearTimeout(gone)
     }
   }, [toast])
+
+  // 新版本：页面提示，用户点了才接管并刷新一次。
+  // ※ 首次安装时 controller 为空，不提示；只有「已经受控 + 发现 waiting」才是更新。
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onUpdate = (e: Event) => {
+      if (isPwaUpdateEvent(e)) setUpdateWorker(e.detail)
+    }
+    const onController = () => {
+      if (wantReload.current) window.location.reload()
+    }
+    window.addEventListener(PWA_UPDATE_EVENT, onUpdate)
+    navigator.serviceWorker.addEventListener('controllerchange', onController)
+    return () => {
+      window.removeEventListener(PWA_UPDATE_EVENT, onUpdate)
+      navigator.serviceWorker.removeEventListener('controllerchange', onController)
+    }
+  }, [])
 
   async function undo() {
     try {
@@ -232,6 +254,23 @@ export function App() {
       {toast && (
         <div className={toastOut ? 'toast is-out' : 'toast'} role="status">
           {toast}
+        </div>
+      )}
+
+      {updateWorker && (
+        <div className="updatebar" role="status">
+          <span>新版本可用</span>
+          <button
+            type="button"
+            className="updatebar__go"
+            onClick={() => {
+              wantReload.current = true
+              updateWorker.postMessage({ type: 'SKIP_WAITING' })
+              setUpdateWorker(null)
+            }}
+          >
+            更新
+          </button>
         </div>
       )}
 
