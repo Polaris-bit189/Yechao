@@ -250,3 +250,22 @@
   font-size: var(--fs-tag);
   line-height: var(--lh-loose);
 }
+@media (max-width: 767px) {
+  /* 正文面板：高度用 `dvh`（移动地址栏收放时才是真实可视高度），`vh` 兜底。
+     内边距收到 16px —— 320 宽下左右各 24px 会把正文挤成一行几个字。 */
+  .csign__doc {
+    max-height: 46vh;
+    max-height: 46dvh;
+    padding: var(--s4);
+  }
+
+  /* 签署按钮 ≥44×44 触控目标。勾选框本身在 label 里，整条 label 都可点。 */
+  .csign__go {
+    min-height: 44px;
+  }
+
+  /* 表格只在自身容器里横滚，不把整页顶出去。 */
+  .csign__tablewrap {
+    min-width: 0;
+  }
+}

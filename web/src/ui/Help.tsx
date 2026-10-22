@@ -1,16 +1,59 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 /**
  * 左下角问号打开的东西。
  *
  * 只写快捷键与几条边界，不写产品介绍 —— 页面上已经有别人的东西在说
  * 这个产品是什么了，这里再多说一遍是噪音。
+ *
+ * ※ 它是一块**模态浮层**（`aria-modal`），所以光有个 Esc 关闭不够：
+ *   · 打开时把焦点移进卡片，否则 Tab 会落到浮层后面的页面上；
+ *   · Tab/Shift+Tab 在卡片内**循环**，焦点跑不出去；
+ *   · Esc 与点遮罩都能关（遮罩那一层由 `.helpwrap` 的 onClick 负责）。
  */
 export function Help({ onClose }: { onClose: () => void }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
+    const card = cardRef.current
+    // 卡片里的可聚焦元素。现在只有一个「知道了」按钮，但不写死。
+    const focusables = () =>
+      card
+        ? Array.from(
+            card.querySelectorAll<HTMLElement>(
+              'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+            ),
+          )
+        : []
+
+    // 打开就把焦点移进卡片。
+    focusables()[0]?.focus()
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const items = focusables()
+      if (items.length === 0) {
+        e.preventDefault()
+        return
+      }
+      const cur = document.activeElement as HTMLElement | null
+      const idx = cur ? items.indexOf(cur) : -1
+      // 到尾部再 Tab 回头部，到头部再 Shift+Tab 去尾部 —— 焦点圈在卡片里。
+      const next = e.shiftKey
+        ? idx <= 0
+          ? items.length - 1
+          : idx - 1
+        : idx === -1 || idx === items.length - 1
+          ? 0
+          : idx + 1
+      e.preventDefault()
+      items[next]?.focus()
     }
+
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
@@ -20,7 +63,9 @@ export function Help({ onClose }: { onClose: () => void }) {
       <div
         className="helpcard"
         role="dialog"
+        aria-modal="true"
         aria-label="关于"
+        ref={cardRef}
         onClick={(e) => e.stopPropagation()}
       >
         <h2>关于</h2>

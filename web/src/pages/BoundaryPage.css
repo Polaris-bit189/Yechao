@@ -36,10 +36,10 @@
 
 /* ── 数字 ──────────────────────────────────────────────────── */
 
-/* 两列。窄屏一列 —— 四块挤成两列在 375 宽上会把数字折行。 */
+/* 两列。`minmax(0,1fr)`：列宽由容器均分，一个长数字撑不破列。 */
 .stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s2);
 }
 
@@ -47,6 +47,7 @@
    给 16px 的内边距是把它当成了内容块，而它是个读数牌。
    （改之前四张卡 92px 高、两张两行共 192px。） */
 .stat {
+  min-width: 0;
   padding: var(--s2) var(--s3);
   border: 1px solid var(--line);
   border-radius: var(--r2);
@@ -59,9 +60,12 @@
   line-height: var(--lh-tight);
 }
 
-/* 数字是这页的主角：大字号、等宽，一眼能读到。 */
+/* 数字是这页的主角：大字号、等宽，一眼能读到。
+   `overflow-wrap:anywhere` —— 两列窄卡里「已遮蔽 12,345 处」这类长数字
+   要能折行，而不是被裁掉一截。 */
 .stat__value {
   margin: 1px 0 0;
+  overflow-wrap: anywhere;
   font-size: var(--fs-title);
   font-weight: 600;
   line-height: 1.1;
@@ -126,11 +130,20 @@
 }
 
 @media (max-width: 767px) {
+  /* 四块读数牌在移动端**仍是 2×2** —— 降成一列会把这一页拉长一倍，
+     而它只是四张小卡。真正窄到 340 以下才单列（见下一条）。 */
   .stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stat__value {
     font-size: var(--fs-title);
+  }
+}
+
+/* 超窄屏：两列会把长数字挤到折行，改为单列，读数不缩。 */
+@media (max-width: 339px) {
+  .stats {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

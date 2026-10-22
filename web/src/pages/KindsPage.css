@@ -24,8 +24,31 @@
   transition: border-color var(--t-fast) var(--ease);
 }
 
-.kinds__row:hover {
-  border-color: var(--line-2);
+/* 行本身**不是**可点区域 —— 它没有 onClick，就不该用 hover 变色去招呼点击
+   （会让人以为点整行能进去，点了却没反应）。这一条删掉了原来的
+   `.kinds__row:hover { border-color }`。 */
+
+.kinds__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.kinds__icon {
+  display: inline-flex;
+  color: var(--kc);
+}
+
+/* 标题要能收缩 + 省略：`min-width:0` 放开 flex 项默认的 min-content 宽度，
+   否则一个长类目名会把「N 条」挤出去、把整行顶宽。 */
+.kinds__label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--kc);
+  font-size: var(--fs-note);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 空类目（这一类还没有条目）少给一点视觉重量。
@@ -103,12 +126,15 @@
 }
 
 .kinds__peek-title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   color: var(--fg-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* 截止时间**不缩**：它是预览里唯一的日期，被压掉就白列了。 */
 .kinds__peek-due {
   flex-shrink: 0;
   color: var(--fg-3);
@@ -130,5 +156,11 @@
 
   .kinds__peek {
     padding-left: 20px;
+  }
+}
+/* 小屏档：320 宽下一屏能多露出一块，行距再收一档。 */
+@media (max-width: 359px) {
+  .kinds__peek li {
+    line-height: 1.25;
   }
 }

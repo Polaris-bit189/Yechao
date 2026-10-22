@@ -217,12 +217,25 @@
 }
 
 @media (max-width: 767px) {
+  /* 提醒条留在**文档流内**（static）：它是顶部的通知，不该压住内容。
+     窄屏允许换行 —— 长文案与两个按钮各占一行比硬挤在一行好读。 */
   .remind {
     position: static;
     height: auto;
     flex-wrap: wrap;
     gap: var(--s1) var(--s2);
     padding: var(--s2) var(--s3);
+  }
+
+  /* 两个按钮 ≥44×44 触控目标。 */
+  .remind__yes,
+  .remind__no {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 var(--s2);
   }
 
   .phead__title {
@@ -244,5 +257,10 @@
     max-height: calc(100vh - 2 * var(--s4));
     max-height: calc(100dvh - 2 * var(--s4));
     overflow-y: auto;
+  }
+
+  /* 关闭按钮 ≥44×44 触控目标。 */
+  .helpcard button {
+    min-height: 44px;
   }
 }

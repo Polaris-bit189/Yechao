@@ -148,7 +148,10 @@
    后者会让留空格的背景色透出来，形成一块比留白更抢眼的实心块。 */
 .grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* `minmax(0, 1fr)`：列宽由容器均分，格子内容再长也**不撑破**列。
+     用裸 `1fr` 时列的默认最小尺寸是 min-content —— 一个长数字/长词
+     就能把 7 列整体推宽，320 宽下直接横向溢出。 */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   overflow: hidden;
   border-top: 1px solid var(--line);
   border-left: 1px solid var(--line);
@@ -255,6 +258,9 @@
 
 .due__name {
   flex: 1;
+  /* flex 项的 `min-width` 默认是 auto（= min-content）；标题 `nowrap`
+     时长标题的 min-content 就是整行，会把这一行撑出容器。 */
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -316,6 +322,7 @@
 
 .near__names {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   color: var(--fg-2);
   font-size: var(--fs-sub);
@@ -395,6 +402,8 @@
 }
 
 .mside__t {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   color: var(--fg-2);
   text-overflow: ellipsis;
@@ -420,12 +429,32 @@
     grid-row: auto;
   }
 
+  /* 格子：宽由 7 列均分（`minmax(0,1fr)` 保证不撑破），高与宽相等。
+     ※ `min-height` 给一个最小档：≥360px 视口 54px、<360px 48px（见下一条）。
+       两者一起用时，宽不足 54 的窄屏格子会略高于宽 —— 这不是正方形，
+       但「格子够大能点」比「严格正方形」要紧。 */
   .grid__cell {
-    height: 54px;
+    height: auto;
+    aspect-ratio: 1;
+    min-height: 54px;
     font-size: var(--fs-sub);
+  }
+
+  /* 月份切换按钮：触控目标 ≥44×44。 */
+  .monthbar__nav {
+    width: 44px;
+    height: 44px;
+    font-size: var(--fs-hero);
   }
 
   .due__note {
     display: none;
+  }
+}
+
+/* 小屏档：格子最小高度再收一档，320 宽下七列不会挤到看不清数字。 */
+@media (max-width: 359px) {
+  .grid__cell {
+    min-height: 48px;
   }
 }

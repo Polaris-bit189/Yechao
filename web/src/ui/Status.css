@@ -42,12 +42,14 @@
 
 .stgrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* `minmax(0, 1fr)`：列宽均分，卡片里的长数字（如 12,345）撑不破列。 */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--s3);
   margin-bottom: var(--s5);
 }
 
 .stcard {
+  min-width: 0;
   padding: var(--s3) var(--s4);
   border: 1px solid var(--line);
   border-radius: var(--r2);
@@ -83,11 +85,14 @@
 .strows__name {
   min-width: 88px;
   color: var(--fg);
+  /* 长的源名 / 原因码没有空格可断，任意处换行才不会把行顶宽。 */
+  overflow-wrap: anywhere;
 }
 
 .strows__dim {
   color: var(--fg-3);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 /* 失败状态。与 `.stat__bad` 同一档颜色，理由相同。 */
@@ -98,7 +103,7 @@
 @media (max-width: 767px) {
   /* 三张卡在窄屏挤成一行会让数字换行 —— 两列更好读。 */
   .stgrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .strows__line {

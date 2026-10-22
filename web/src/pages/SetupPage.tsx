@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   dropCategory,
   dropGroup,
@@ -63,6 +63,25 @@ const TABS: Array<{ id: Tab; label: string }> = [
 
 export function SetupPage({ onChanged }: { onChanged: () => void }) {
   const [tab, setTab] = useState<Tab>('status')
+  // 二级标签条（窄屏下可横滑）。切页签时把当前项滚进视野。
+  const tabsRef = useRef<HTMLElement>(null)
+
+  // 单行横滑的标签条如果不滚，选中的分区可能落在屏幕外 —— 切过去却
+  // 看不见自己点了哪个。与 App.tsx 顶部导航同一套处理：只在**溢出**时滚，
+  // 桌面（标签条不溢出）是空转。
+  useEffect(() => {
+    const nav = tabsRef.current
+    if (!nav) return
+    if (nav.scrollWidth <= nav.clientWidth) return
+    const on = nav.querySelector<HTMLElement>('.tabs__btn.is-on')
+    if (!on) return
+    const navRect = nav.getBoundingClientRect()
+    const onRect = on.getBoundingClientRect()
+    // 让选中项的中心对齐标签条的中心。
+    const delta = onRect.left - navRect.left - (navRect.width - onRect.width) / 2
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    nav.scrollTo({ left: nav.scrollLeft + delta, behavior: reduce ? 'auto' : 'smooth' })
+  }, [tab])
 
   return (
     <div className="wrap">
@@ -74,7 +93,7 @@ export function SetupPage({ onChanged }: { onChanged: () => void }) {
         <div className="phead__side">数据源 · 模型 · 类目</div>
       </header>
 
-      <nav className="tabs" aria-label="配置分区">
+      <nav className="tabs" aria-label="配置分区" ref={tabsRef}>
         {TABS.map((t) => (
           <button
             key={t.id}
