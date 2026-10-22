@@ -2,19 +2,24 @@
 <html lang="zh-CN" data-theme="yoi">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0a0c12" />
+    <meta id="theme-color" name="theme-color" content="#0a0c12" />
     <!--
-      ※ SVG 图标，不是 PNG。这一版**不是 PWA**（没有 manifest、没有 service
-      worker），所以不需要 192/512 那套位图；只补一个标签页图标。
-      浏览器不支持 SVG 图标时会回落成默认空白 —— 那是**可见的缺失**，
-      比挂一个坏链接好。
+      PWA：manifest + 192/512 位图图标 + service worker（T5 起）。
+      ※ 标签页仍用 SVG 图标；安装器与 iOS 要 PNG，见 public/icons/。
+      manifest 与图标都由 Vite 从 public/ 拷进 dist/。
     -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="夜抄" />
     <title>夜抄</title>
-    <script type="module" crossorigin src="./assets/index-CyhS4M69.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DOEuHcXW.css">
+    <script type="module" crossorigin src="./assets/index-0HTeSarj.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-LKYVkFon.css">
   </head>
   <body>
     <div id="root"></div>

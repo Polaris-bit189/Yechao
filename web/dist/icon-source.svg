@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="夜抄">
+  <!--
+    应用图标：与 favicon 同一套语言 —— 弯月（夜里发生的事）＋ 两行长短不一的线
+    （收成一份按天可读的清单）。底色铺满画布，安装器会自己裁圆角。
+    maskable 版把图形收进中央 80% 安全区，见 icon-maskable.svg。
+  -->
+  <rect width="512" height="512" fill="#0a0c12" />
+  <g transform="translate(0 0) scale(8)">
+    <defs>
+      <mask id="crescent">
+        <rect width="64" height="64" fill="#000" />
+        <circle cx="26" cy="26" r="16" fill="#fff" />
+        <circle cx="33" cy="22" r="14" fill="#000" />
+      </mask>
+    </defs>
+    <circle cx="26" cy="26" r="16" fill="#79a6cf" mask="url(#crescent)" />
+    <g fill="#e7ecf6">
+      <rect x="14" y="46" width="26" height="3" rx="1.5" opacity="0.92" />
+      <rect x="14" y="52" width="17" height="3" rx="1.5" opacity="0.55" />
+    </g>
+  </g>
+</svg>
