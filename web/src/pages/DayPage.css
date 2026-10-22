@@ -273,12 +273,41 @@
 }
 
 @media (max-width: 767px) {
+  /* 日报是首屏第一件事：日期够大，但页头与卡片之间的空白收紧一档，
+     让「日期 + 摘要开头 + 第一个分区」在 375×812 一屏内落得下。 */
   .day__date {
     font-size: 26px;
   }
 
+  /* 窄屏一行放不下「日期 + 星期」时让星期换到第二行，而不是把日期压窄。 */
+  .day__head {
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--s2);
+    margin-bottom: var(--s3);
+  }
+
+  /* 改成基线对齐后不再需要原来那条下内边距。 */
+  .day__week {
+    padding-bottom: 0;
+  }
+
   .paper {
-    padding: var(--s4);
+    padding: 16px;
+  }
+
+  /* 正文里可能出现长 URL、连续英文、@昵称 —— 窄屏一律允许在任意处断行，
+     否则它们会顶破卡片造成整页横向溢出。`overflow-wrap` 是继承属性，
+     在容器上设一次即可覆盖页内所有文本。 */
+  .day {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* 小屏（<360px）再收一档内边距：320 宽度下 16px 的左右留白太贵。 */
+@media (max-width: 359px) {
+  .paper {
+    padding: 12px;
   }
 }
 

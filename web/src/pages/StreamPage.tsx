@@ -14,7 +14,7 @@ import {
 } from '../api'
 import { ago, dueInfo, groupLabel, hmText, mdhmText, ymd } from '../lib/time'
 import { kindColor, kindIcon } from '../lib/theme'
-import { IcClock, IcMap, IcPin, IcSearch } from '../ui/icons'
+import { IcChevron, IcClock, IcMap, IcPin, IcSearch } from '../ui/icons'
 import { SourceTag } from '../ui/SourceTag'
 import { StatusStrip } from '../ui/Status'
 import './StreamPage.css'
@@ -42,6 +42,9 @@ export function StreamPage({ onChanged }: { onChanged: () => void }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [sheet, setSheet] = useState<Item | null>(null)
+  // 打开抽屉的那个按钮。关闭后焦点要回到它 —— 触屏上没有「下一条」可点，
+  // 焦点落在哪就是用户下一次操作的位置。
+  const sheetOpener = useRef<HTMLElement | null>(null)
 
   // 停下再请求。每敲一下都发的话，输入会一顿一顿。
   useEffect(() => {
@@ -253,7 +256,10 @@ export function StreamPage({ onChanged }: { onChanged: () => void }) {
               key={it.item_id}
               item={it}
               kinds={cats}
-              onOpen={() => setSheet(it)}
+              onOpen={(opener) => {
+                sheetOpener.current = opener
+                setSheet(it)
+              }}
               onRecolor={(k) => void recolor(it.item_id, k)}
               onRemove={() => void remove(it.item_id)}
             />
@@ -273,6 +279,7 @@ export function StreamPage({ onChanged }: { onChanged: () => void }) {
         <Sheet
           item={sheet}
           kinds={cats}
+          returnTo={sheetOpener.current}
           onClose={() => setSheet(null)}
           onRecolor={(k) => {
             void recolor(sheet.item_id, k)
@@ -298,7 +305,7 @@ function Row({
 }: {
   item: Item
   kinds: CategoryDetail[]
-  onOpen: () => void
+  onOpen: (opener: HTMLElement | null) => void
   onRecolor: (kind: string) => void
   onRemove: () => void
 }) {
@@ -322,7 +329,7 @@ function Row({
         </div>
 
         <h3 className="row__title">
-          <button type="button" onClick={onOpen}>
+          <button type="button" onClick={(e) => onOpen(e.currentTarget)}>
             {item.title}
           </button>
         </h3>
@@ -376,6 +383,18 @@ function Row({
           删除
         </button>
       </div>
+
+      {/* 触屏没有悬停：桌面那套 `.row__tools` 在窄屏隐藏（见 CSS），
+          改用这个常驻的 44×44「操作」按钮。它打开的是**同一个**详情抽屉 ——
+          改类目与删除都在抽屉里，交互不另起一套。 */}
+      <button
+        type="button"
+        className="row__act"
+        aria-label={`操作：${item.title}`}
+        onClick={(e) => onOpen(e.currentTarget)}
+      >
+        <IcChevron />
+      </button>
     </article>
   )
 }
@@ -389,12 +408,14 @@ function mdTextShort(ts: number): string {
 function Sheet({
   item,
   kinds,
+  returnTo,
   onClose,
   onRecolor,
   onRemove,
 }: {
   item: Item
   kinds: CategoryDetail[]
+  returnTo: HTMLElement | null
   onClose: () => void
   onRecolor: (kind: string) => void
   onRemove: () => void
@@ -404,13 +425,28 @@ function Sheet({
   const [srcErr, setSrcErr] = useState<string | null>(null)
 
   useEffect(() => {
+    // 关闭后焦点回到**打开它的那个元素**：键盘用户按 Esc 关闭后，
+    // 焦点若掉回 <body>，Tab 要从页首重新数一遍。
+    const opener = returnTo ?? (document.activeElement as HTMLElement | null)
+
+    // 移动端抽屉盖住整屏：锁住背景滚动，免得手指在抽屉上滑却滚了下层列表。
+    // 桌面右侧抽屉不锁（行为与改造前一致）。
+    const mobile = window.matchMedia('(max-width: 767px)').matches
+    const prevOverflow = document.body.style.overflow
+    if (mobile) document.body.style.overflow = 'hidden'
+
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
     box.current?.focus()
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      if (mobile) document.body.style.overflow = prevOverflow
+      opener?.focus()
+    }
+  }, [onClose, returnTo])
 
   // 打开抽屉时把源消息拉回来。
   //

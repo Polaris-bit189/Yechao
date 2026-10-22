@@ -279,6 +279,13 @@
   color: var(--danger);
 }
 
+/* 「操作」按钮只在窄屏出现（见文件末尾的媒体查询）。桌面用不到它，
+ * 常驻在 DOM 里也行 —— 但 `display:none` 更干净：它不参与焦点顺序，
+ * 也不会在 hover 工具的旁边多画一个按钮。 */
+.row__act {
+  display: none;
+}
+
 /* ── 加载更多 ──────────────────────────────────────────────── */
 
 .more {
@@ -460,8 +467,121 @@
 }
 
 @media (max-width: 767px) {
-  /* 窄屏没有悬停，操作常驻。 */
+  /* iOS 聚焦时会把字号 <16px 的输入框放大整页 —— 搜索框必须 16px，
+     高度也拉到 44px。 */
+  .find {
+    min-height: 44px;
+  }
+
+  .find input {
+    min-height: 44px;
+    padding: 0;
+    font-size: 16px;
+  }
+
+  /* 类目条：单行横滑。分类有七八个，换行会把第一屏的高度吃掉两行，
+     而日报首屏优先 —— 横滑只占一行，其余藏到手势后面。
+     人员筛选（`.people__list`）保持换行：那是用户主动展开的次级筛选。 */
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    /* 滑到两头不要带动整页。 */
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    /* 滚动条隐藏后，44px 高度的 chip 不会被它挤矮。 */
+    padding-bottom: 2px;
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    flex: 0 0 auto;
+    min-height: 44px;
+    scroll-snap-align: center;
+  }
+
+  /* 触屏没有悬停：桌面那套 `.row__tools` 在窄屏隐藏，
+     改为每行一个 44×44「操作」按钮，点开同一个详情抽屉。 */
   .row__tools {
+    display: none;
+  }
+
+  .row__act {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-self: flex-start;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: var(--fg-3);
+    border-radius: var(--r1);
+  }
+
+  .row__act:hover,
+  .row__act:active {
+    color: var(--accent);
+  }
+
+  /* ── 详情抽屉：窄屏从右侧改成屏幕底 ─────────────────────────
+   * 右侧抽屉在手机上只有 92vw 宽却贴着右边，正文被挤成一条；
+   * 而右上角正是拇指最够不到的地方。改底部满宽后，关闭与操作都落在
+   * 拇指区，顶部圆角给出一条「从下升起」的视觉线索。 */
+  .sheet {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    /* `dvh` 认不出的浏览器回落 `vh`。 */
+    max-height: 85vh;
+    max-height: 85dvh;
+    /* 底部安全区：home 指示条之上再留一档内边距，按钮不压上去。 */
+    padding: var(--s5) var(--s5) calc(var(--s5) + env(safe-area-inset-bottom));
+    border-left: 0;
+    border-top: 1px solid var(--line-2);
+    border-radius: var(--r3) var(--r3) 0 0;
+    animation: riseIn var(--t-mid) var(--ease);
+  }
+
+  /* 关闭与底部操作的目标 ≥44×44。 */
+  .sheet__top button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    /* 把那 44px 的一部分探出内边距，视觉上仍贴角。 */
+    margin: -8px -8px 0 0;
+  }
+
+  .sheet__facts {
+    grid-template-columns: 44px 1fr;
+  }
+
+  .sheet__acts {
+    align-items: center;
+  }
+
+  .sheet__acts select,
+  .sheet__drop {
+    min-height: 44px;
+  }
+}
+
+/* 底部抽屉从下升起。只动 transform 与 opacity。 */
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
     opacity: 1;
+    transform: none;
   }
 }
