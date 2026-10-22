@@ -228,4 +228,21 @@
   .phead__title {
     font-size: 20px;
   }
+
+  /* Help 浮层：卡片不能顶出视口，超出的内容在卡片内部滚动。
+     ※ 这里只立住**高度与安全区**两条；焦点陷阱、Esc/遮罩关闭、
+       关闭按钮尺寸等完整行为在 T3。 */
+  .helpwrap {
+    padding: var(--s4) max(12px, env(safe-area-inset-right))
+      calc(var(--s4) + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+
+  .helpcard {
+    width: 100%;
+    max-width: none;
+    /* `dvh` 兜 `vh`：移动地址栏收放时前者才是真实可视高度。 */
+    max-height: calc(100vh - 2 * var(--s4));
+    max-height: calc(100dvh - 2 * var(--s4));
+    overflow-y: auto;
+  }
 }

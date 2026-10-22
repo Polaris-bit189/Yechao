@@ -283,71 +283,8 @@
   }
 }
 
-/* ── 窄屏：导航变顶部两行 ──────────────────────────────────── */
+/* ── 窄屏 ──────────────────────────────────────────────────── */
 
-@media (max-width: 767px) {
-  .rail {
-    position: sticky;
-    top: 0;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    width: auto;
-    padding: var(--s2) var(--s3);
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .rail__brand {
-    flex-shrink: 0;
-    padding: 0 var(--s3) 0 0;
-    font-size: var(--fs-card);
-  }
-
-  /* 页面标签横排，可以横滑。 */
-  .rail__nav {
-    flex-direction: row;
-    gap: 2px;
-    width: 100%;
-    margin-top: var(--s2);
-    overflow-x: auto;
-    order: 3;
-  }
-
-  .rail__link {
-    width: auto;
-    padding: 5px var(--s2);
-    white-space: nowrap;
-  }
-
-  .rail__link svg {
-    display: none;
-  }
-
-  .rail__tail {
-    flex-direction: row;
-    gap: var(--s2);
-    margin-top: 0;
-    margin-left: auto;
-    padding-top: 0;
-    border-top: 0;
-  }
-
-  .rail__small {
-    width: auto;
-    padding: 4px var(--s2);
-  }
-
-  .rail__small svg {
-    display: none;
-  }
-
-  .rail__help {
-    position: static;
-  }
-
-  .main {
-    margin-left: 0;
-    padding: var(--s4) var(--s3) var(--s6);
-  }
-}
+/* 窄屏（≤767px）的导航/内容规则**已全部迁到 src/styles/mobile.css** ——
+ * 它在本文件之后引入，覆盖得动这里；两份并存时「谁生效」取决于 import
+ * 顺序，会变成改哪份都不确定（misc.css 顶部的注释记过这个坑）。 */

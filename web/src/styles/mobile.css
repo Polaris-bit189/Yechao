@@ -1,0 +1,134 @@
+/* 移动端外壳：顶部两行导航、安全区、44px 触控。
+ *
+ * ★ 引入位置：App.tsx 的 import 列表**最后**（`./ui/misc.css` 之后），
+ *   确保覆盖。
+ *
+ * ★ 本文件是移动端样式的**唯一来源**。App.css 里那份窄屏块已删 ——
+ *   同一组规则分散在两处时，「哪份生效」取决于 import 顺序：改错一份
+ *   既不报错也不生效（misc.css 里记过这个坑）。
+ *
+ * 只在 `max-width:767px` 内生效；≥768px 一律不碰，桌面行为与改造前一致。
+ */
+
+@media (max-width: 767px) {
+  /* ── 导航：sticky 顶部、两行 ─────────────────────────────── */
+  .rail {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    width: auto;
+    /* 刘海/挖孔安全区：上边在 8px 之上再留一段；
+       左右各取「12px 与安全区」的较大者。 */
+    padding: calc(8px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) var(--s2)
+      max(12px, env(safe-area-inset-left));
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    /* 滚动性能：移动端去掉模糊；背景接近不透明，滑动时不透底。 */
+    backdrop-filter: none;
+    background: color-mix(in srgb, var(--bg) 96%, transparent);
+  }
+
+  /* 第一行：品牌 + 撤销/主题/帮助。 */
+  .rail__brand {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 var(--s2) 0 0;
+    font-size: var(--fs-card);
+  }
+
+  /* 省宽度：当前页徽标在窄屏不显示 —— 页面名由选中的标签自己说。 */
+  .rail__brand span {
+    display: none;
+  }
+
+  /* 第二行：页面标签，单行横滑。 */
+  .rail__nav {
+    width: 100%;
+    margin-top: var(--s2);
+    flex-direction: row;
+    gap: 2px;
+    order: 3;
+    overflow-x: auto;
+    /* 横向滑动到边界不要带动整页/父级 —— 手势留在标签条里。 */
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    /* 隐藏滚动条：横滑靠手势，条子占高度又难看。 */
+    scrollbar-width: none;
+  }
+
+  .rail__nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rail__link {
+    width: auto;
+    min-height: 44px;
+    padding: 5px var(--s3);
+    white-space: nowrap;
+    scroll-snap-align: center;
+    gap: var(--s2);
+  }
+
+  /* 只给**选中项**显示图标（15px）；未选中的只留文字，省宽度。 */
+  .rail__link svg {
+    display: none;
+  }
+
+  .rail__link.is-on svg {
+    display: block;
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+  }
+
+  /* 选中的圆点 `::after` 必须留在可视区内：横滑容器会裁掉贴边的元素，
+     链接右侧的 `padding: … var(--s3)` 就是给它留的位置（12px > 4px）。 */
+
+  /* 底部工具：撤销 / 主题 / 帮助。 */
+  .rail__tail {
+    flex-direction: row;
+    gap: var(--s2);
+    margin-top: 0;
+    margin-left: auto;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .rail__small {
+    width: auto;
+    /* 触控目标 ≥44×44。 */
+    min-width: 44px;
+    min-height: 44px;
+    padding: 4px var(--s2);
+    justify-content: center;
+  }
+
+  .rail__small svg {
+    display: none;
+  }
+
+  .rail__help {
+    position: static;
+    width: 44px;
+    height: 44px;
+  }
+
+  /* ── 内容 ────────────────────────────────────────────────── */
+  .main {
+    margin-left: 0;
+    padding: var(--s4) max(12px, env(safe-area-inset-right))
+      calc(var(--s6) + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+
+  /* ── 提示条 ──────────────────────────────────────────────── */
+  .toast {
+    bottom: calc(var(--s5) + env(safe-area-inset-bottom));
+    /* 不贴边：两侧各留 var(--s3)，长文案自动换行而不是顶出屏幕。 */
+    max-width: calc(100vw - 2 * var(--s3));
+  }
+}

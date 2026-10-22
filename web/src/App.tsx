@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { stepBack } from './api'
 import { Sky } from './ui/Sky'
 import { Remind, remindAnswered } from './ui/Remind'
@@ -26,6 +26,9 @@ import './App.css'
 // 这份 CSS —— 于是提醒条、帮助卡、页面头的规则全部不生效。
 // 症状是「元素在、样式没了」，而控制台一个错都不报。
 import './ui/misc.css'
+// 移动端外壳样式。**必须放在最后**：它覆盖 App.css / misc.css 里的桌面与
+// 旧窄屏规则，靠的就是引入顺序。见 mobile.css 顶部的说明。
+import './styles/mobile.css'
 
 type Page = 'day' | 'stream' | 'kinds' | 'month' | 'boundary' | 'setup'
 
@@ -75,6 +78,8 @@ export function App() {
   const [toastOut, setToastOut] = useState(false)
   // 提醒条问过没有。问过就不显示，顶部那 36px 也不留（见 App.css 的 .is-bare）。
   const [remindDone, setRemindDone] = useState(remindAnswered)
+  // 顶部标签条（窄屏下可横滑）。切页时把选中的标签滚进视野。
+  const navRef = useRef<HTMLUListElement>(null)
 
   const refresh = useCallback(() => setTick((n) => n + 1), [])
 
@@ -87,6 +92,24 @@ export function App() {
 
   // 空白处敲 katsuji 切到彩蛋。
   useEffect(() => watchEgg(() => setTheme(EGG.id)), [])
+
+  // 切页时把选中的标签滚到标签条中间 —— 否则横滑条停在旧位置，
+  // 当前页可能在屏幕外。只在标签条**溢出**时滚；桌面侧栏是纵向排列、
+  // 不会溢出，这段逻辑对它是空转。
+  // ※ 只有一套导航 DOM（规格硬要求），所以直接查 `.rail__link.is-on`。
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    if (nav.scrollWidth <= nav.clientWidth) return
+    const on = nav.querySelector<HTMLElement>('.rail__link.is-on')
+    if (!on) return
+    const navRect = nav.getBoundingClientRect()
+    const onRect = on.getBoundingClientRect()
+    // 让选中项的中心对齐标签条的中心。
+    const delta = onRect.left - navRect.left - (navRect.width - onRect.width) / 2
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    nav.scrollTo({ left: nav.scrollLeft + delta, behavior: reduce ? 'auto' : 'smooth' })
+  }, [page])
 
   useEffect(() => {
     if (!toast) return
@@ -124,7 +147,7 @@ export function App() {
             <span>{badgeOf(page, theme)}</span>
           </div>
 
-          <ul className="rail__nav">
+          <ul className="rail__nav" ref={navRef}>
             {PAGES.map(({ id, label, Icon }) => (
               <li key={id}>
                 <button

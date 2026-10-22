@@ -138,3 +138,55 @@ code {
   font-family: var(--mono);
   font-size: 0.92em;
 }
+/* ── 移动端基线 ────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  html {
+    /* 系统字号变化时**不要**跟着缩放整页 —— 那会让版式失去基准。 */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* 不锁 `height: 100%`：移动浏览器地址栏收放会让 100% 高度算错。
+     改用 `svh`（最小视口高度），不认的浏览器回落 `vh`。 */
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+
+  /* 触控高亮是系统盖上去的蓝/灰方块，观感与截图都难看 —— 全站关掉，
+     交互反馈交给元素自身的 :active / 过渡。 */
+  body,
+  a,
+  button,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 输入控件字号**必须** ≥16px：不足时 iOS 聚焦会强制放大整页。 */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* ── 动效偏好 ──────────────────────────────────────────────── */
+
+/* 系统开了「减少动态效果」就压制一切动画与过渡。
+   ※ 不限于移动端：这是无障碍偏好，桌面同样生效。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
