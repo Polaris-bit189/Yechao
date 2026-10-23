@@ -6,7 +6,8 @@
 
 1. `README.md` —— 产品是什么、三步复现、数据来源。
 2. `docs/交接.md` —— 当前进度、已知问题、不能忘的规矩。
-3. `docs/移动端与PWA实施计划.md` —— 当前任务的执行规格（T1–T9）。
+3. `docs/云部署执行规格.md` —— **当前任务**的执行规格（D0–D10）。
+4. `docs/移动端与PWA实施计划.md` —— 已完成（标签 `mobile-pwa`），仅作历史查阅。
 
 本仓库的全局说明在仓库之外（`D:\github\CLAUDE.md`），CodeArts 看不到；以本文件和上面三份为准。
 
@@ -28,10 +29,15 @@ bootstrap.py     组合根
 
 ## 当前任务的范围
 
-- 只改 `web/`；PWA 服务端部分只允许改 `yechao/interfaces/api.py` 的 `_mount_web`（T8）。
-- 不改 `domain/`、`application/`、持久化、数据源、业务路由。
-- **不手工编辑 `web/dist/`**；它只由 `npm run build` 生成，T9 统一提交。
+- 当前任务是**云部署**，执行规格见 `docs/云部署执行规格.md`（D0–D10）。
+- 只允许改部署契约：`.env.example`、`deploy/docker-compose.yml`、`deploy/entrypoint.sh`、
+  `.gitignore`、部署契约测试（见规格 D1）。
+- 不改 `domain/`、`application/`、持久化、数据源、业务路由。发现缺陷时另开任务卡，
+  先写能复现的测试，再改实现。
+- 移动端与 PWA（T1–T9）已完成并打了 `mobile-pwa` 标签；除部署验收暴露的问题外，不再改 `web/`。
+- **不手工编辑 `web/dist/`**；它只由 `npm run build` 生成。
 - 一个任务一次提交；测试变红立即停下报告，不带红往下走。
+- 云上出现规格里的任一**停止条件**就停下报告：不静默回退 SQLite、不把未接通写成已部署。
 
 ## 硬规则
 
@@ -70,7 +76,8 @@ cd web && MOBILE=1 node tools/shot.mjs yoi mobile
 
 ## 本任务的验收口径
 
-以 `docs/移动端与PWA实施计划.md` 每个任务卡里的「验收」为准。通用要求：
+当前以 `docs/云部署执行规格.md` 每个任务卡里的「验收」为准；
+其中的在线 Demo 验收会复查下面这些移动端要求：
 
 - 320 / 375 / 390 / 414 / 767 宽度下，六个页面**文档无横向溢出**。
 - 移动端可点击目标 ≥44×44；输入框字号 ≥16px。
