@@ -32,6 +32,17 @@ services:
       # ※ 这个区别是刻意的：「必填」与「可空」不能都写成同一种形状，
       # 否则一个「忘了配密钥」会被当成「配了一个空密钥」。
       YECHAO_API_KEY: "${YECHAO_API_KEY:-}"
+      # ※ 云端的 MaaS 端点：**可空**（`${VAR:-}` —— 本机不接 MaaS 就留空，
+      # `[cloud]` 那一步跳过）。`[cloud]` 只看脱敏后的条目，不看原文。
+      #
+      # ※ 这三个**只给 `yechao` 服务**：只有它跑 `cloud` 那一步。scheduler /
+      # watcher 不调用 MaaS，少传一个少一个泄漏面。
+      #
+      # ※ `YECHAO_CLOUD_API_KEY` 同样**只在环境变量里**：`entrypoint.sh`
+      # 只把 BASE_URL / MODEL 写进 `[cloud]`，口令不落任何文件。
+      YECHAO_CLOUD_BASE_URL: "${YECHAO_CLOUD_BASE_URL:-}"
+      YECHAO_CLOUD_MODEL: "${YECHAO_CLOUD_MODEL:-}"
+      YECHAO_CLOUD_API_KEY: "${YECHAO_CLOUD_API_KEY:-}"
       # ※ 数据库连接串**必填**，而且**只在环境变量里**（不进配置文件）：
       # 配置文件会被导出（`/api/config/export`）、会被提交，而连接串里有密码。
       #
@@ -43,6 +54,14 @@ services:
       # ※ 同理，Redis 也是必填。留空字符串不算「没配」——
       # `${VAR:?}` 对空值同样报错，所以「配了一个空连接串」也进不来。
       YECHAO_REDIS_URL: "${YECHAO_REDIS_URL:?必须指定 Redis 连接串（云上指向 Redis）}"
+    # ※ 让容器能按**名字**找到宿主 —— 模型端点装宿主的 Ollama 上。
+    #
+    # Docker Desktop（Windows/Mac）自带 `host.docker.internal`，Linux 上没有
+    # 这个名字（而 ECS 是 Docker Engine）。补上 `host-gateway` 之后，本地与
+    # ECS 用**同一个** base_url，不必在 Linux 上写死一个每次重建都会变的私有 IP
+    # —— 写死 IP 的那一刻，换台机器就复现不了。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - "${YECHAO_DATA_DIR:?}:${YECHAO_DATA_DIR:?}"
       - "${YECHAO_CONFIG_DIR:?}:${YECHAO_CONFIG_DIR:?}"
@@ -63,7 +82,13 @@ services:
     # 问两次）—— 否则缓存不可达时探活超时 ⇒ 容器被判不健康 ⇒ 依赖它的
     # 调度器永远不启动，而「今天没有日报」没有任何地方会报。
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=8)"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=8)",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -141,6 +166,9 @@ services:
       # 而「默认早上跑」正是产品要的。区别是刻意的：「必填」与「有默认」
       # 不能都写成同一种形状（见 YECHAO_API_KEY 那一段）。
       YECHAO_DAILY_AT: "${YECHAO_DAILY_AT:-07:30}"
+    # ※ 与 `yechao` 同一理由：容器要能按名字找到宿主的模型端点。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - "${YECHAO_DATA_DIR:?}:${YECHAO_DATA_DIR:?}"
       - "${YECHAO_CONFIG_DIR:?}:${YECHAO_CONFIG_DIR:?}"
@@ -161,7 +189,13 @@ services:
     # ※ 文件不在 / 读不到 ⇒ 抛异常 ⇒ 退出码非零 ⇒ unhealthy。
     # **不兜底**：一个永远成功的探活比没有探活更危险。
     healthcheck:
-      test: ["CMD", "python", "-c", "import os,sys,time;p=os.path.join(os.environ.get('YECHAO_DATA_DIR','/app/data'),'.scheduler-heartbeat');sys.exit(0 if time.time()-os.path.getmtime(p)<600 else 1)"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os,sys,time;p=os.path.join(os.environ.get('YECHAO_DATA_DIR','/app/data'),'.scheduler-heartbeat');sys.exit(0 if time.time()-os.path.getmtime(p)<600 else 1)",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -229,6 +263,9 @@ services:
       # 的取舍不同：间隔取默认值是产品要的，而**读演示数据**不是 ——
       # 所以后者宁可空着、由入口喊出来。
       YECHAO_WATCH_SOURCES: "${YECHAO_WATCH_SOURCES:-}"
+    # ※ 与 `yechao` 同一理由：容器要能按名字找到宿主的模型端点。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - "${YECHAO_DATA_DIR:?}:${YECHAO_DATA_DIR:?}"
       - "${YECHAO_CONFIG_DIR:?}:${YECHAO_CONFIG_DIR:?}"
@@ -249,7 +286,13 @@ services:
     # ※ 文件不在 / 读不到 ⇒ 抛异常 ⇒ 退出码非零 ⇒ unhealthy。
     # **不兜底**：一个永远成功的探活比没有探活更危险。
     healthcheck:
-      test: ["CMD", "python", "-c", "import os,sys,time;p=os.path.join(os.environ.get('YECHAO_DATA_DIR','/app/data'),'.watcher-heartbeat');sys.exit(0 if time.time()-os.path.getmtime(p)<600 else 1)"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os,sys,time;p=os.path.join(os.environ.get('YECHAO_DATA_DIR','/app/data'),'.watcher-heartbeat');sys.exit(0 if time.time()-os.path.getmtime(p)<600 else 1)",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3

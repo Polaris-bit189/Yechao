@@ -36,7 +36,14 @@ config/
 *.lock
 
 # 凭证与部署产物：绝不入库
+#
+# ※ `.env` 是**精确匹配**，它挡不住 `.env.cloud` 这类 —— 而那一份里是
+#   云上 RDS / Redis / MaaS 的连接串与口令。所以补一条 `.env.*`（覆盖
+#   `.env.cloud` / `.env.preflight` 之类），再用 `!.env.example` 把**模板**
+#   放行 —— 模板里全是示例值，而且它是用户照抄的唯一起点。
 .env
+.env.*
+!.env.example
 .auto-deploy/
 *.tfstate*
 *.pem

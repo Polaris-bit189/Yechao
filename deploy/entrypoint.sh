@@ -88,6 +88,64 @@ path.write_text("\n".join(out).strip() + "\n", encoding="utf-8")
 PY
 fi
 
+# ※ **云端端点同样从环境变量注入**，写进 settings.toml 的 `[cloud]` 段。
+#
+# [llm] 与 [cloud] 看的东西不同（原文 vs 脱敏后的条目），所以两个端点**各自
+# 独立** —— 配了 [llm] 不代表配了 [cloud]，反之亦然。各自有自己的开关。
+#
+# ※ 同样**只重建 `[cloud]` 段的 base_url / model**，段内其它键（`enable_thinking`
+# 之类）原样保留 —— 与 [llm] 那一节同一个理由：全文过滤会把**别的段**的同名键
+# 一起删掉，而配置目录是挂载卷，那是永久损失。
+#
+# ※ **绝不**把云端口令写进任何文件 —— 连它的变量名都不该出现在这里。
+# 口令只走环境变量；配置文件会被导出（`/api/config/export`）、会被提交，
+# 写进去就是泄漏。`tests/contracts/test_deploy_contract.py` 有一条判据
+# 钉这件事：这个脚本里**不出现**那个口令变量名。
+if [ -n "${YECHAO_CLOUD_BASE_URL:-}" ]; then
+    echo "  云端端点 $YECHAO_CLOUD_BASE_URL"
+    # ※ 按段走：进到 [cloud] 就把整段吃掉重写，其它段原样搬。
+python - "$CONFIG_DIR/settings.toml" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8") if path.exists() else ""
+
+src = text.splitlines()
+out: list[str] = []
+k = 0
+replaced = False
+while k < len(src):
+    head = src[k].strip()
+    if head == "[cloud]":
+        k += 1
+        keep: list[str] = []
+        while k < len(src):
+            s = src[k].strip()
+            if s.startswith("[") and s.endswith("]"):
+                break
+            if s and not (s.startswith("base_url") or s.startswith("model")):
+                keep.append(src[k])          # enable_thinking 之类，原样留
+            k += 1
+        out.append("[cloud]")
+        out.append('base_url = "' + os.environ["YECHAO_CLOUD_BASE_URL"] + '"')
+        out.append('model = "' + os.environ.get("YECHAO_CLOUD_MODEL", "") + '"')
+        out.extend(keep)
+        replaced = True
+        continue
+    out.append(src[k])
+    k += 1
+
+if not replaced:
+    out += ["", "[cloud]",
+            'base_url = "' + os.environ["YECHAO_CLOUD_BASE_URL"] + '"',
+            'model = "' + os.environ.get("YECHAO_CLOUD_MODEL", "") + '"']
+
+path.write_text("\n".join(out).strip() + "\n", encoding="utf-8")
+PY
+fi
+
 # ※ 没有配置就**不假装配好了**：`refine` 会自己拒绝并指出去哪配。
 # 网页仍然可打开 —— 那是 `serve` 与 `refine` 的职责分界。
 # 容器里必须绑 0.0.0.0，否则 Docker 的端口发布够不到（宿主打不开，

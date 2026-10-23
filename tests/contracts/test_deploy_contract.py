@@ -115,12 +115,15 @@ def test_没有多余的变量_在_example_里却不在_compose_里() -> None:
     env_example = ROOT / ".env.example"
     if not env_example.is_file():
         pytest.skip(".env.example 不存在（上一条已经报过）")
-    declared = set(re.findall(r"^\s*([A-Z_][A-Z0-9_]*)=", _read(env_example), re.MULTILINE))
+    declared = set(
+        re.findall(r"^\s*([A-Z_][A-Z0-9_]*)=", _read(env_example), re.MULTILINE)
+    )
     compose = _read(DEPLOY / "docker-compose.yml")
 
     # ※ `COMPOSE_*` / `DOCKER_*` 是 compose 自己认的，不该要求它们出现在文件里
     unused = {
-        v for v in declared
+        v
+        for v in declared
         if v not in compose and not v.startswith(("COMPOSE_", "DOCKER_"))
     }
     assert not unused, (
@@ -187,6 +190,23 @@ def test_初始化脚本不含_CRLF() -> None:
     )
 
 
+def test_入口脚本不把云端口令写进配置() -> None:
+    """※ 这条判据防的是「为了省事把 key 写进配置文件」。
+
+    那条路**不会报错，只会悄悄泄漏**：配置文件会被导出（`/api/config/export`）、
+    会被提交，而写进去的口令看起来只是「配好了」。所以云端口令**只在环境变量里**，
+    `entrypoint.sh` 只把地址与模型名写进 `[cloud]`。
+
+    ※ 判据是**文本**的（真跑它需要 docker），但它抓的正是那个形态：
+    只要脚本里出现 `YECHAO_CLOUD_API_KEY`，无论写去哪都算命中。
+    """
+    script = _read(DEPLOY / "entrypoint.sh")
+    assert "YECHAO_CLOUD_API_KEY" not in script, (
+        "entrypoint.sh 里出现了 `YECHAO_CLOUD_API_KEY` —— "
+        "云端口令只在环境变量里，写进任何文件都是泄漏。"
+    )
+
+
 # ── 判据三：镜像里真的有前端产物 ────────────────────────────────────
 
 
@@ -208,7 +228,8 @@ def test_Dockerfile_把_web_dist_拷进镜像() -> None:
     # ⇒ 只看**以 COPY 开头的行**。
     dockerfile = _read(DEPLOY / "Dockerfile")
     copy_lines = [
-        ln.strip() for ln in dockerfile.splitlines()
+        ln.strip()
+        for ln in dockerfile.splitlines()
         if ln.strip().upper().startswith("COPY ")
     ]
     assert any("web/dist" in ln for ln in copy_lines), (
