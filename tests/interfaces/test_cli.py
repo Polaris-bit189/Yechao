@@ -12,14 +12,18 @@
 
 from __future__ import annotations
 
+import shutil
 import socket
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
 
 from yechao.interfaces.cli import main
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture()
@@ -122,6 +126,45 @@ def test_demo_重跑是幂等的(workdir, capsys) -> None:
 
     out = capsys.readouterr().out
     assert "保留不动" in out
+
+
+def test_demo_给已存在的空成员名单补昵称_但不碰改过名的群(
+    workdir, capsys
+) -> None:
+    """※ 实测的坑：`config.example/groups.toml` 里四个群都在，`members` 全空。
+
+    `demo` 原来只看「文件在不在」，文件在就整份跳过 —— 于是姓名脱敏的名单
+    永远是空的，云端 dry-run 报「比对过 0 个」，而隐私页会把那个 0 读成
+    「查了、没漏」。这是**看起来在保护、其实没保护**。
+
+    ※ 判据要能区分「补空名单」与「覆盖用户配置」：
+    只补**空**的，且群名必须与合成语料一致 —— 改过名的群一个字段都不动。
+    """
+    data, cfg = workdir
+    shutil.copytree(ROOT / "config.example", cfg)
+    groups_file = cfg / "groups.toml"
+    text = groups_file.read_text(encoding="utf-8")
+    text = text.replace(
+        'name = "青梧大学2027届通知群"', 'name = "用户改过的群名"', 1
+    )
+    groups_file.write_text(text, encoding="utf-8")
+
+    code = main(["demo", *_argv(workdir)])
+    assert code == 0
+
+    data_groups = tomllib.loads(groups_file.read_text(encoding="utf-8"))["group"]
+    by_id = {int(g["id"]): g for g in data_groups}
+    # 改过名的群：名单仍然是空的 —— 用户配置没被覆盖
+    assert not by_id[820000001].get("members"), "改过名的群被写入了名单"
+    assert by_id[820000001]["name"] == "用户改过的群名"
+    # 名字仍与合成语料一致的群：空名单被补上
+    assert by_id[820000003].get("members"), "空成员名单没有被补上"
+    assert by_id[820000002].get("members")
+    assert by_id[820000004].get("members")
+
+    out = capsys.readouterr().out
+    assert "补上了" in out
+    assert "姓名脱敏" in out
 
 
 def _留一道人工痕迹(db: Path) -> None:

@@ -79,9 +79,12 @@ class _Model:
         self.dead = dead
         self.mute = mute
         self.calls = 0
+        #: 每次调用声明的输出形状。`None` = 调用方没声明。
+        self.schemas: list[dict | None] = []
 
     def complete(self, *, system: str, user: str, max_tokens: int = 2048, response_schema: dict | None = None) -> str:
         self.calls += 1
+        self.schemas.append(response_schema)
         if self.dead:
             raise ModelError("连不上模型端点 http://127.0.0.1:9/v1/chat/completions")
         if self.mute:
@@ -304,6 +307,35 @@ def test_模型写回来了_状态是跑成了(app) -> None:
     assert out.model_failure is None
     assert out.status == daily.STATUS_OK
     assert out.exit_code == daily.EXIT_OK
+
+
+def test_日报调模型时声明了数组形状(app) -> None:
+    """※ 这条钉的是**调用方**，不是 schema 常量本身。
+
+    实测（Ollama 0.40.6 + bonsai-2:4b）：不声明形状时，模型照着输入的样子回
+    NDJSON（每行一个对象、带 `[n]` 前缀），21 条全部解析不出来 ——
+    日报整页退回机械行，而报告只写「模型写 0 / 机械 21」，
+    看起来像模型没干活。声明形状后它物理上只能吐一个合法数组。
+
+    只断言 `_response_schema()` 的返回值是不够的：删掉调用处那一行，
+    那个断言照样是绿的。
+    """
+    _clock_at(app, DAY_A)
+    model = _Model()
+    app.model = model
+    _seed(app, 2, day=DAY_A)
+
+    out = daily.run_today(app)
+
+    assert out.by_model == 2, "模型写回来的行没被用上"
+    assert model.schemas, "日报没有调用模型"
+    schema = model.schemas[0]
+    assert schema is not None, "日报调模型时没有声明输出形状"
+    assert schema["type"] == "array", (
+        "顶层必须是数组 —— `parse_digest_lines` 只认数组，"
+        "换成对象会让 21 条全部被丢掉"
+    )
+    assert schema["items"]["required"] == ["item_id", "line"]
 
 
 def test_今天没有条目_不是降级(app) -> None:

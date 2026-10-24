@@ -55,6 +55,41 @@ LINE_UNMATCHED = "line_unmatched"    # 模型写的行回连不到条目
 LINE_MECHANICAL = "line_mechanical"  # 这一行的正文是机械行（没有模型版本）
 
 
+def _response_schema() -> dict[str, Any]:
+    """日报输出的 JSON schema —— **顶层数组**，与 `parse_digest_lines` 对齐。
+
+    ## 为什么需要它（实测）
+
+    提示词里写着「只输出一个 JSON 数组」，而 4B 模型在**没有解码约束**时
+    会照着输入的样子回 NDJSON：
+
+        [1] {"item_id": 1, "line": "……"}
+        [3] {"item_id": 3, "line": "……"}
+
+    21 条一条都解析不出来，日报整页退回机械行 —— 而报告里只写
+    「模型写 0 / 机械 21」，看起来像模型没干活。换成 schema 约束后，
+    它物理上只能吐一个合法数组。
+
+    ## 为什么是顶层数组，而抽取那边是 `{"items": [...]}`
+
+    两处**解析器**的首选形状不同：`parse_reply` 两种都认且首选对象，
+    `parse_digest_lines` 只认数组（`isinstance(data, list)`）。
+    schema 跟着各自的解析器走，不是两套形状漂移。
+    """
+    return {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "item_id": {"type": "integer"},
+                "line": {"type": "string"},
+            },
+            "required": ["item_id", "line"],
+            "additionalProperties": False,
+        },
+    }
+
+
 @dataclass
 class DigestDeps:
     items: Any       # ItemRepository
@@ -138,6 +173,9 @@ def run(
                 user=_p.build_digest_user([], material),
                 # ※ **不写死数字** —— 预算只有一处答案（prompts 的常量）。
                 max_tokens=_p.DIGEST_MAX_TOKENS,
+                # ※ 形状由调用方声明（见 `_response_schema` 的 docstring）：
+                # 不约束时 4B 模型会回 NDJSON，21 条全被丢掉。
+                response_schema=_response_schema(),
             )
             from yechao.application.prompts import parse_digest_lines
 

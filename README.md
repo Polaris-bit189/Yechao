@@ -145,6 +145,10 @@ MySQL / Redis 服务）。验证方式是静态的：用假连接把 `MySQLStore
 **它证明的是方言形状对，不是 MySQL 的解析器一定接受这些语句。** 这句话也写在
 `mysql_store.py` 的 docstring 里。
 
+云上已经在**真实** RDS MySQL 8.0 与 DCS Redis 上跑通（`/api/health` 报
+`database.backend=mysql`、`cache.backend=redis`，台账也确实落在 MySQL 里）。
+这两件事证明的东西不同：静态测试管方言形状，云端跑通管「这一套装配真的能用」。
+
 `GET /api/health` 回答三件事 —— 服务 / 库 / 缓存：
 
 - **库挂了 ⇒ 503**：每条路由都要读库，回 200 就是把「坏」说成「健康」
@@ -152,6 +156,27 @@ MySQL / Redis 服务）。验证方式是静态的：用假连接把 `MySQLStore
   编排层反复重启一个本来就正常的容器 —— 而重启修不好 Redis
 
 `deploy/docker-compose.yml` 的 healthcheck 探的就是它。
+
+### 云端部署的最小步骤
+
+本队的云端演示版（`cn-north-4`）是「ECS + 云数据库」，不是把 SQLite 一起打包：
+
+1. 在控制台开 RDS MySQL 8.0 与 DCS Redis（同一 VPC / 子网，**只走内网**，
+   不开公网）；
+2. 把连接串写进 `.env.cloud`（被 `.gitignore` 的 `.env.*` 挡住，**不提交**）；
+3. 用 auto-deploy 先 `--plan-only` 生成计划，核对后再 apply；本次实际命令、
+   资源 ID、健康检查结果见 `docs/云部署记录.md`；
+4. `curl http://<EIP>/api/health` 必须是 `ok=true`、`degraded=false`，
+   且 `database.backend=mysql`、`cache.backend=redis` —— **只回 200 不够**。
+
+**模型放法 A（本队云端演示版实际使用）**：Ollama 跑在 ECS 主机上，容器的
+`[llm]` 指向 `http://host.docker.internal:11434/v1/chat/completions`。原文不出
+这台机器；CPU 推理慢，云端实测 4b 单批约 2–3 分钟（27b 慢约一个数量级），
+所以演示用的是 `bonsai-2:4b`。
+
+**模型放法 B（`cloud` 二次处理）**：只有**脱敏后的结构化条目**出网，`[cloud]`
+里只有地址与模型名，key 只走 `YECHAO_CLOUD_API_KEY`。**尚未接真实 MaaS**
+（缺地址与模型名），记录里不写「已验证」。
 
 ## 移动端与 PWA
 

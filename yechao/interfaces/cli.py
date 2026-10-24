@@ -480,7 +480,42 @@ def _cmd_demo(args: Args) -> int:
             ])
             wrote.append(CONFIG_FILENAMES["groups"])
         else:
-            _warn(f"{CONFIG_FILENAMES['groups']} 已存在，保留不动（那是你的配置）")
+            # ※ 已存在的配置**不覆盖** —— 那是用户的。但「成员名单是空的」
+            # 不是一种配置，是**没配**：姓名脱敏靠这份名单，名单为空时
+            # `names_checked=0`，而隐私页会把那个 0 读成「查了、没漏」。
+            #
+            # 实测：容器里 `config/groups.toml` 是从 `config.example` 落的
+            # （四个群都在、members 全是空），`demo` 因为文件存在而跳过，
+            # 于是云端 dry-run 报「比对过 0 个」。这正是「看起来在保护、
+            # 其实没保护」。
+            #
+            # ⇒ 只补**空**的，且只在群名与合成语料一致时补。用户改过的
+            # 名字、别的群、非空的名单，一律不碰。
+            synth = {g.id: g for g in GROUPS if g.nicknames}
+            current = app_for_write.config.groups()
+            filled: list[int] = []
+            merged: list[GroupConfig] = []
+            for g in current:
+                s = synth.get(g.id)
+                if not g.members and s is not None and g.name == s.name:
+                    g = GroupConfig(
+                        id=g.id,
+                        name=g.name,
+                        tier=g.tier,
+                        enabled=g.enabled,
+                        members=tuple(s.nicknames),
+                    )
+                    filled.append(g.id)
+                merged.append(g)
+            if filled:
+                app_for_write.config.set_groups(merged)
+                wrote.append(CONFIG_FILENAMES["groups"])
+                _ok(
+                    f"{CONFIG_FILENAMES['groups']} 已存在；为 {len(filled)} 个"
+                    f"空成员名单补上了合成语料的昵称（姓名脱敏需要）"
+                )
+            else:
+                _warn(f"{CONFIG_FILENAMES['groups']} 已存在，保留不动（那是你的配置）")
 
         if not cats_file.exists():
             st.ensure_dirs()
@@ -895,7 +930,12 @@ def _cmd_cloud(args: Args) -> int:
         import json as _json
 
         _say(f"【试运行】以下是将要发往云端的**全部内容**（{len(payload)} 条）：")
-        _say(_json.dumps(payload, ensure_ascii=False, indent=2)[:3000])
+        # ※ **不截断。** 原来这里是 `[:3000]`，而 21 条真实条目的 JSON 就有
+        # 3164 字 —— 于是「全部内容」这四个字是假的：尾巴被切掉，而且没有
+        # 任何截断提示。人拿着这份输出做出网边界核对时，会以为看完了。
+        #
+        # 这一路的用途就是「发之前肉眼核一遍」，所以宁可长，也要完整。
+        _say(_json.dumps(payload, ensure_ascii=False, indent=2))
         _say()
         # ※ 这一句是**这一路的核心证据**：它把「比对了几个名字」写出来。
         # 只写「已脱敏」是承诺；写出数字才是可证伪的。

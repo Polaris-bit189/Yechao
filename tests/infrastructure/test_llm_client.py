@@ -97,6 +97,40 @@ def test_端点不认_response_format_时回落一次(monkeypatch) -> None:
     assert 试过的 == [True, False, False]
 
 
+def test_关思考时同时发_reasoning_effort_none() -> None:
+    """※ 第三种方言。
+
+    实测（Ollama 0.40.6 + bonsai-2:4b 走 `/v1/chat/completions`）：
+    `enable_thinking` / `think` / `chat_template_kwargs` 三个字段全发出去，
+    模型**照样**把 512 token 全烧在 `Thinking Process` 上，`content` 为空；
+    只有 `reasoning_effort: "none"` 能让 reasoning 长度为 0。
+    而同一个模型走原生 `/api/chat` 时 `think: false` 是生效的 ——
+    两个端点认的不是同一个字段，所以这个字段必须一起发。
+    """
+    body = _client(enable_thinking=False).build_body(system="s", user="u", max_tokens=10)
+    assert body["reasoning_effort"] == "none"
+    assert body["think"] is False
+    assert body["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+def test_没设开关时思考相关的字段一个都不发() -> None:
+    """`None` 是「不发」，不是「发 false」—— 三态不能压成两态。"""
+    body = _client().build_body(system="s", user="u", max_tokens=10)
+    for key in ("enable_thinking", "think", "chat_template_kwargs", "reasoning_effort"):
+        assert key not in body, f"没设开关却发了 {key}"
+
+
+def test_开着思考时不发_reasoning_effort() -> None:
+    """`reasoning_effort` 只在**关**思考时发。
+
+    开着思考时随手填一个档位（`"high"` 之类）是替用户选了他没选的开关；
+    这个字段代表的是「关掉」，不是一个可以随便填的调优旋钮。
+    """
+    body = _client(enable_thinking=True).build_body(system="s", user="u", max_tokens=10)
+    assert body["think"] is True
+    assert "reasoning_effort" not in body
+
+
 def test_别的_4xx_不回落(monkeypatch) -> None:
     """※ 400 / 422 才可能是「不认这个字段」；401 是密钥、404 是地址、429 是限流
     —— 把它们也回落一遍，只会把真正的病因埋进第二次请求里。

@@ -227,6 +227,21 @@ class OpenAIClient:
             body["chat_template_kwargs"] = {
                 "enable_thinking": self.config.enable_thinking
             }
+            # ※ **第三种方言：`reasoning_effort`。**
+            #
+            # 实测（Ollama 0.40.6 + bonsai-2:4b，走 `/v1/chat/completions`）：
+            # 上面三个字段**全都发出去**，模型照样把预算烧在思考上 ——
+            # 512 token 全是 `Thinking Process`，`content` 一个字没有；
+            # 换成 `reasoning_effort: "none"` 后 reasoning 长度为 0。
+            # 同一个模型走原生 `/api/chat` 时 `think: false` 是生效的 ——
+            # **两个端点认的不是同一个字段**。
+            #
+            # ⇒ 关思考时一并发。真不认它的端点会忽略（与上面同一个理由：
+            # 多发一个字段的代价远低于猜错的代价）。
+            # 只在 `False` 这一侧发：「开着思考」没有统一的档位可填，
+            # 随手写个 `"high"` 就是替用户挑了一个他没选的开关。
+            if self.config.enable_thinking is False:
+                body["reasoning_effort"] = "none"
         body.update(self.config.extra_body)
         return body
 

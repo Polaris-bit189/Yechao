@@ -23,7 +23,14 @@ WORKDIR /app
 # 不装的话，容器启动时会报「pip install pymysql」并拒绝启动（**不会**
 # 悄悄退回 SQLite）—— 那是要的行为，但没必要让部署的人踩一次。
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir fastapi uvicorn pymysql redis
+# ※ 依赖源。默认仍是 PyPI —— clone 下来在任何网络都能构建。
+#    云上构建时用 `--build-arg PIP_INDEX_URL=<镜像源>` 指过去：
+#    cn-north-4 实测 `pypi.org` 8 秒只拉下约 220KB，`pip install` 会卡到超时；
+#    而 `mirrors.huaweicloud.com` 同一请求 0.07 秒返回。
+#    ※ 写成一个可覆盖的参数而不是直接写死镜像源：写死之后，换一台不在
+#      中国内网的机器就得改 Dockerfile —— 而那是「复现」的红线。
+ARG PIP_INDEX_URL=https://pypi.org/simple
+RUN pip install --no-cache-dir --index-url "$PIP_INDEX_URL" fastapi uvicorn pymysql redis
 
 COPY yechao ./yechao
 COPY web/dist ./web/dist
