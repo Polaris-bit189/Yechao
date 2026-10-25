@@ -11,11 +11,11 @@
  *   · 新版本安装后**不自动 skipWaiting**：页面提示「新版本可用」，
  *     用户点了才接管并刷新一次。
  */
-const VERSION = '9545655eaac7'
+const VERSION = '52a43e77b5be'
 const PRECACHE = [
   "./",
-  "./assets/index-0HTeSarj.js",
-  "./assets/index-LKYVkFon.css",
+  "./assets/index-C4SxC_1u.js",
+  "./assets/index-Cs1FPmxa.css",
   "./favicon.svg",
   "./icon-maskable.svg",
   "./icon-source.svg",

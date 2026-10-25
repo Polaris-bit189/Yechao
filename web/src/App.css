@@ -17,6 +17,13 @@
   .shell.is-bare .main {
     padding-top: var(--s6);
   }
+
+  /* ※ 桌面侧栏从 x=0 起，菜单按内容撑开后**靠左**锚定才不会跑到视口左缘外
+     （移动端是 `right:0` 向左展开，见基础样式）。 */
+  .themebox {
+    left: 0;
+    right: auto;
+  }
 }
 
 /* ── 导航 ──────────────────────────────────────────────────── */
@@ -141,6 +148,11 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  /* ※ 触控目标 ≥44 —— T7 判据。窄屏（<768）第一行是 row 方向，
+     「撤销 / 主题」在空间紧张时被压到 34px 宽；这里给出真实下限，
+     不靠放大字号或透明遮罩撑命中区。 */
+  min-width: 44px;
+  min-height: 44px;
   padding: 6px var(--s2);
   border-radius: var(--r1);
   color: var(--fg-3);
@@ -164,8 +176,13 @@
 .themebox {
   position: absolute;
   top: calc(100% + 5px);
-  left: 0;
-  width: 100%;
+  /* ※ 宽度**跟内容走**。原来 `left:0; width:100%` 继承触发按钮的 44px，
+     菜单只剩 44px 宽（实测 44×241）：五个主题名竖排、说明挤成多行，不可用。
+     改成按内容撑开，并从**右侧向左展开**（`right:0`），320–420 都不溢出右缘。 */
+  right: 0;
+  left: auto;
+  width: max-content;
+  min-width: 100%;
   padding: 4px;
   border: 1px solid var(--line-2);
   border-radius: var(--r2);
@@ -176,15 +193,26 @@
 }
 
 .themebox__row {
+  /* ※ 触控目标 ≥44 —— T7 判据。宽度**自己**给下限：`.themebox` 是
+     `width:100%`，跟着触发按钮走，窄屏下缩到 34px（实测 34×46 未通过）。
+     不靠透明遮罩 / 伪元素 / transform，把行**本身**撑到 ≥44。 */
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-width: 44px;
+  min-height: 44px;
   padding: 5px var(--s2);
   border-radius: var(--r1);
   color: var(--fg-2);
   font-size: var(--fs-sub);
   text-align: left;
+}
+
+.themebox__row span,
+.themebox__row em {
+  /* ※ 标签与说明各占一行，不换行 —— 否则窄菜单里每个字都竖着排。 */
+  white-space: nowrap;
 }
 
 .themebox__row em {

@@ -186,6 +186,11 @@
 }
 
 .row__title button {
+  /* ※ 触控目标 ≥44 —— T7 判据。标题按钮原高 20px。只加透明遮罩或放大
+     字号只是**看起来**够大，命中区仍小；这里把按钮**本身**撑到 44px。 */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: inherit;
   font: inherit;
   text-align: left;
@@ -234,8 +239,10 @@
 
 /* 地图入口比其它元信息再淡一档 —— 它是操作，不是信息。 */
 .row__map {
+  /* ※ 触控目标 ≥44 —— T7 判据。原高 18px；把链接**本身**撑到 44px。 */
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
   gap: 4px;
   margin-top: 4px;
   color: var(--fg-3);
