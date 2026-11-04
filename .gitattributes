@@ -1,0 +1,10 @@
+# 规则文件自身也用 LF，避免在启用 core.autocrlf 的机器上被改写。
+.gitattributes text eol=lf
+
+# 部署脚本由 /bin/sh 执行。CRLF 会让内核把 shebang 当成 "/bin/sh\r"，
+# 报 "not found" —— 看起来像文件不存在，实际是行尾问题。
+*.sh text eol=lf
+
+# compose / CI 配置同理：统一 LF，避免「同一份文件在不同机器上行为不同」。
+*.yml text eol=lf
+*.yaml text eol=lf

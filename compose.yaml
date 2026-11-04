@@ -1,0 +1,7 @@
+# 根目录入口：auto-deploy 只认仓库根下的 compose 文件。
+# 服务定义仍然只有一份 —— deploy/docker-compose.yml；这里用 include 指过去，
+# 不复制第二份会漂移的 compose。Compose v2.20+ 支持 include。
+name: yechao
+
+include:
+  - path: deploy/docker-compose.yml
